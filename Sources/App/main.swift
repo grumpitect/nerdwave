@@ -581,7 +581,7 @@ struct BracketButton: View {
 }
 
 /// The menu bar icon: the app artwork inside a thick rounded ring, on the same 2.4 s cycle as the panel's
-/// "playing" dot. Idle: a soft white ring. Playing: the ring pulses from lavender to white and back.
+/// "playing" dot. Idle: a soft white ring. Playing: the ring pulses from hot pink to white and back.
 /// Scanning: from orange to white and back. Phase 0 is the full accent color.
 enum StatusIcon {
     enum State { case idle, playing, scanning }
@@ -592,7 +592,7 @@ enum StatusIcon {
     static let appIcon: NSImage = Bundle.main.url(forResource: "AppIcon", withExtension: "icns").flatMap(NSImage.init(contentsOf:))
         ?? (NSImage(named: NSImage.applicationIconName)?.copy() as? NSImage) ?? NSImage()
     static let ringIdle = NSColor(red: 0.90, green: 0.86, blue: 0.90, alpha: 1)
-    static let ringPlaying = NSColor(red: 0.84, green: 0.67, blue: 1.00, alpha: 1)      // lavender
+    static let ringPlaying = NSColor(red: 1.00, green: 0.36, blue: 0.63, alpha: 1)      // hot pink
     static let ringScanning = NSColor(red: 1.00, green: 0.78, blue: 0.40, alpha: 1)
 
     static func image(state: State, phase: Double) -> NSImage {
