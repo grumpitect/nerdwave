@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/icon.png" width="128" alt="Nerdwave icon"></p>
+<p align="center"><img src="docs/icon.png" width="512" alt="Nerdwave icon"></p>
 
 # Nerdwave
 
