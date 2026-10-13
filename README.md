@@ -30,6 +30,9 @@ on your stream means a lot.
   15 seconds at either end is detected).
 - **Transport controls.** Back, rewind 10 s, play/pause, forward 10 s, next. Back walks through the last
   1000 tracks, even across moods.
+- **Media keys.** Play/pause, next and previous work from the keyboard and Control Center, which also shows the
+  track. macOS sends those keys to whichever app last started playing, so a video you start later takes them, and
+  playing or skipping in Nerdwave takes them back.
 - **Remembers things.** Volume (default 25%), the last mood (ready to play, never auto-plays at login),
   and your history survive restarts.
 - **Open at login** toggle (off by default), and a `feedback` link straight to GitHub issues.

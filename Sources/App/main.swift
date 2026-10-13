@@ -1,12 +1,13 @@
 // Nerdwave: a menu bar music player for streamers (AppKit + SwiftUI glue around MusicCore).
 import AppKit
+import MediaPlayer
 import MusicCore
 import ServiceManagement
 import SwiftUI
 
 /// Shared state for the panel, refreshed whenever the player changes.
 final class AppModel: ObservableObject {
-    let player: MusicPlayer
+    let player: MusicCore.MusicPlayer
     private let volume = VolumeSetting()
     private let last = LastPlaylistSetting()
     private let historyStore = HistoryStore()
@@ -27,6 +28,8 @@ final class AppModel: ObservableObject {
     var closePanel: (() -> Void)?
     /// Called after every refresh (the menu bar icon follows playing/scanning state).
     var onRefresh: (() -> Void)?
+    /// Called after the user plays, pauses, skips or seeks in Nerdwave (panel or media keys).
+    var onUserAction: (() -> Void)?
 
     /// Opens a link in the browser and closes the panel.
     func open(_ url: URL) {
@@ -38,7 +41,7 @@ final class AppModel: ObservableObject {
     init() {
         volumePercent = volume.percent
         let store = historyStore
-        player = MusicPlayer(backend: EngineBackend(), volumePercent: volume.percent, history: store.load(),
+        player = MusicCore.MusicPlayer(backend: EngineBackend(), volumePercent: volume.percent, history: store.load(),
                              resolve: { name in loadPlaylists(in: AppPaths.playlists).first { $0.name == name } })
         player.onHistoryChange = { store.save($0) }
         let t = Timer(timeInterval: 5, repeats: true) { [weak self] _ in self?.saveResumePoint() }
@@ -90,6 +93,7 @@ final class AppModel: ObservableObject {
         guard let playlist = loadPlaylists(in: AppPaths.playlists).first(where: { $0.name == name }) else { return }
         last.name = name
         player.play(playlist, weight: playlist.weight)
+        onUserAction?()
     }
 
     /// Restores the last playlist at launch without playing it. If the last track is still there it is loaded
@@ -161,10 +165,10 @@ final class AppModel: ObservableObject {
 
     func openFeedback() { open(feedbackURL) }
 
-    func togglePause() { player.togglePause() }
-    func next() { player.next() }
-    func previous() { player.previous() }
-    func seek(_ s: Double) { player.seek(by: s); refresh() }
+    func togglePause() { player.togglePause(); onUserAction?() }
+    func next() { player.next(); onUserAction?() }
+    func previous() { player.previous(); onUserAction?() }
+    func seek(_ s: Double) { player.seek(by: s); refresh(); onUserAction?() }
     func toggleLogin() {
         if SMAppService.mainApp.status == .enabled { try? SMAppService.mainApp.unregister() }
         else { try? SMAppService.mainApp.register() }
@@ -689,9 +693,71 @@ final class NerdPanel: NSPanel {
 
 // MARK: - App
 
+/// The media keys (play/pause, next, previous) and Control Center's Now Playing. macOS sends the keys to the app
+/// that most recently reported it started playing, so Nerdwave only reports "playing" when the user plays or
+/// skips something in it. Automatic track changes update the title but never claim the keys back from, say, a
+/// YouTube video started later.
+final class NowPlaying {
+    private let model: AppModel
+    private let center = MPNowPlayingInfoCenter.default()
+    private var published = false
+    private let artwork: MPMediaItemArtwork = {
+        let icon = StatusIcon.appIcon
+        return MPMediaItemArtwork(boundsSize: NSSize(width: 512, height: 512)) { _ in icon }
+    }()
+
+    init(model: AppModel) {
+        self.model = model
+        let c = MPRemoteCommandCenter.shared()
+        c.togglePlayPauseCommand.addTarget { [weak model] _ in
+            guard let model, model.current != nil else { return .noActionableNowPlayingItem }
+            model.togglePause(); return .success
+        }
+        c.playCommand.addTarget { [weak model] _ in
+            guard let model, model.current != nil else { return .noActionableNowPlayingItem }
+            if !model.player.isPlaying { model.togglePause() }
+            return .success
+        }
+        c.pauseCommand.addTarget { [weak model] _ in
+            guard let model else { return .commandFailed }
+            if model.player.isPlaying { model.togglePause() }
+            return .success
+        }
+        c.nextTrackCommand.addTarget { [weak model] _ in
+            guard let model, model.current != nil else { return .noActionableNowPlayingItem }
+            model.next(); return .success
+        }
+        c.previousTrackCommand.addTarget { [weak model] _ in
+            guard let model, model.player.canGoBack else { return .noActionableNowPlayingItem }
+            model.previous(); return .success
+        }
+        c.changePlaybackPositionCommand.isEnabled = false
+    }
+
+    /// `claim`: the user just acted in Nerdwave, so report the real playing state (which hands Nerdwave the media
+    /// keys when playing). Otherwise only the details are refreshed, and a stop or pause is reported, never a start.
+    func publish(claim: Bool) {
+        guard claim || published else { return }        // stay out of Now Playing until the user plays something here
+        published = true
+        let p = model.player
+        var info: [String: Any] = [MPMediaItemPropertyArtwork: artwork,
+                                   MPNowPlayingInfoPropertyPlaybackRate: p.isPlaying ? 1.0 : 0.0]
+        if let title = p.nowPlaying { info[MPMediaItemPropertyTitle] = title }
+        if let name = p.current?.name { info[MPMediaItemPropertyArtist] = name; info[MPMediaItemPropertyAlbumTitle] = "Nerdwave" }
+        if let progress = p.progress {
+            info[MPMediaItemPropertyPlaybackDuration] = progress.total
+            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = progress.elapsed
+        }
+        center.nowPlayingInfo = info
+        if claim { center.playbackState = p.isPlaying ? .playing : .paused }
+        else if !p.isPlaying, center.playbackState == .playing { center.playbackState = .paused }
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let model = AppModel()
+    private lazy var nowPlaying = NowPlaying(model: model)
     private var panel: NerdPanel?
     private var clickMonitor: Any?
     private var keyMonitor: Any?
@@ -846,6 +912,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.showWelcome = { [weak self] in self?.showWelcome() }
         model.closePanel = { [weak self] in self?.closePanel() }
         model.onRefresh = { [weak self] in self?.updateStatusIcon() }
+        model.onUserAction = { [weak self] in self?.nowPlaying.publish(claim: true) }
+        _ = nowPlaying                                   // registers the media key handlers
         model.player.onChange = { [weak self] in self?.stateChanged() }
 
 
@@ -896,6 +964,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func stateChanged() {
         model.refresh()
         model.saveResumePoint()
+        nowPlaying.publish(claim: false)
         updateStatusIcon()
         resizePanel()
     }
