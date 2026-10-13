@@ -12,9 +12,21 @@ public struct Playlist: Equatable {
     public let tracks: [URL]
     /// Loudness weight from the playlist's `#WEIGHT:` line (0 to 1; 1 when missing).
     public let weight: Double
-    public init(name: String, tracks: [URL], weight: Double = 1) {
-        self.name = name; self.tracks = tracks; self.weight = weight
+    /// SF Symbol from an optional `#ICON:` line; nil means "guess from the name".
+    public let icon: String?
+    public init(name: String, tracks: [URL], weight: Double = 1, icon: String? = nil) {
+        self.name = name; self.tracks = tracks; self.weight = weight; self.icon = icon
     }
+    /// The icon to show: the `#ICON:` override, or a guess from the name.
+    public var displayIcon: String { icon ?? guessPlaylistIcon(name) }
+}
+
+/// Reads an `#ICON: gamecontroller.fill` line (an SF Symbol name).
+public func parseIcon(_ line: Substring) -> String? {
+    let t = line.trimmingCharacters(in: .whitespaces)
+    guard t.uppercased().hasPrefix("#ICON:") else { return nil }
+    let v = t.dropFirst("#ICON:".count).trimmingCharacters(in: .whitespaces)
+    return v.isEmpty ? nil : v
 }
 
 /// Reads a `#WEIGHT: 84%` (or `#WEIGHT: 0.84`) line. Other players treat it as a comment.
@@ -39,12 +51,13 @@ public func loadPlaylists(in dir: URL) -> [Playlist] {
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
             let lines = text.split(whereSeparator: \.isNewline)
             let weight = lines.lazy.compactMap(parseWeight).first ?? 1
+            let icon = lines.lazy.compactMap(parseIcon).first
             let tracks = lines
                 .map { $0.trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty && !$0.hasPrefix("#") }
                 .map { $0.hasPrefix("/") ? URL(fileURLWithPath: $0) : dir.appendingPathComponent($0) }
             return tracks.isEmpty ? nil : Playlist(name: url.deletingPathExtension().lastPathComponent,
-                                                   tracks: tracks, weight: weight)
+                                                   tracks: tracks, weight: weight, icon: icon)
         }
 }
 

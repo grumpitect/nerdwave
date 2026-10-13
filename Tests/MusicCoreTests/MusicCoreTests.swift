@@ -419,9 +419,9 @@ final class MenuTests: XCTestCase {
     }
 
     func testUnknownPlaylistGetsGenericIcon() {
-        let e = menuEntries(for: MenuState(playlists: ["Jazz"], current: nil, isPlaying: false, nowPlaying: nil,
+        let e = menuEntries(for: MenuState(playlists: ["Untitled Mix"], current: nil, isPlaying: false, nowPlaying: nil,
                                            volumePercent: 100, openAtLogin: false))
-        XCTAssertTrue(e.contains(.playlist(name: "Jazz", symbol: "music.note.list", checked: false)))
+        XCTAssertTrue(e.contains(.playlist(name: "Untitled Mix", symbol: "music.note.list", checked: false)))
     }
 }
 

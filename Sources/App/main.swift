@@ -45,11 +45,16 @@ final class AppModel: ObservableObject {
             func mmss(_ s: Double) -> String { String(format: "%02d:%02d", Int(s) / 60, Int(s) % 60) }
             time = "\(mmss(p.elapsed)) / \(mmss(p.total))"
         } else { time = "--:-- / --:--" }
+        let lists = loadPlaylists(in: AppPaths.playlists)
+        // `#ICON:` overrides, ignored when the symbol doesn't exist on this macOS (then the guess is used).
+        let icons = Dictionary(lists.compactMap { p in
+            p.icon.flatMap { NSImage(systemSymbolName: $0, accessibilityDescription: nil) != nil ? (p.name, $0) : nil }
+        }, uniquingKeysWith: { a, _ in a })
         entries = menuEntries(for: MenuState(
-            playlists: loadPlaylists(in: AppPaths.playlists).map(\.name), current: current,
+            playlists: lists.map(\.name), current: current,
             isPlaying: isPlaying, nowPlaying: nowPlaying, volumePercent: volumePercent,
             openAtLogin: SMAppService.mainApp.status == .enabled, canGoBack: player.canGoBack,
-            scanStatus: scanStatus, notice: player.lastError))
+            scanStatus: scanStatus, notice: player.lastError, icons: icons))
     }
 
     func setVolume(_ p: Int) {

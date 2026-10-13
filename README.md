@@ -21,7 +21,8 @@ on your stream means a lot.
 ## Features
 
 - **Menu bar only.** No Dock icon, no window in your way. Click the icon for a terminal-style panel.
-- **Moods from folders.** Each subfolder of your music folder becomes a playlist. Rescan any time.
+- **Moods from folders.** Each subfolder of your music folder becomes a playlist, with an icon picked from its
+  name ("Boss Fights" gets a flame, "Lofi Study" a coffee cup, "Jazz Nights" a jazz note...). Rescan any time.
 - **Balanced loudness.** Nerdwave measures every track (EBU R128 / ITU-R BS.1770, the broadcast standard)
   and gives each mood a weight so switching moods never jumps in volume.
 - **Endless, smooth playback.** Shuffle that reshuffles every pass (no repeats across the boundary), and a
@@ -120,7 +121,7 @@ sounds like 25% in VLC.
 ## Development
 
 ```bash
-swift test      # 46 tests: playlists, scanning, loudness (incl. the EBU -23 LUFS reference tone),
+swift test      # 51 tests: playlists, scanning, icons, loudness (incl. the EBU -23 LUFS reference tone),
                 # weights and rebalancing, shuffle, history, crossfade, seek, error handling,
                 # menu layout, and real audio playback (these need an audio output device)
 swift build

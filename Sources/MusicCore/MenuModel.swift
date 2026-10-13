@@ -20,15 +20,6 @@ public enum MenuEntry: Equatable {
     case separator
 }
 
-public let moodSymbols: [String: String] = [
-    "Chill": "cup.and.saucer.fill",
-    "Hip-Hop": "headphones",
-    "Upbeat": "bolt.fill",
-    "Late Night": "moon.stars.fill",
-    "Retro Gaming": "gamecontroller.fill",
-    "Calm": "leaf.fill",
-    "Rock": "guitars.fill",
-]
 
 public struct MenuState {
     public var playlists: [String]
@@ -40,14 +31,17 @@ public struct MenuState {
     public var canGoBack: Bool
     public var scanStatus: String?
     public var notice: String?
+    /// Icon per playlist name (from `#ICON:` lines); missing names are guessed.
+    public var icons: [String: String]
     public init(playlists: [String], current: String?, isPlaying: Bool, nowPlaying: String?,
                 volumePercent: Int, openAtLogin: Bool, canGoBack: Bool = false, scanStatus: String? = nil,
-                notice: String? = nil) {
+                notice: String? = nil, icons: [String: String] = [:]) {
         self.playlists = playlists; self.current = current; self.isPlaying = isPlaying
         self.nowPlaying = nowPlaying; self.volumePercent = volumePercent; self.openAtLogin = openAtLogin
         self.canGoBack = canGoBack
         self.scanStatus = scanStatus
         self.notice = notice
+        self.icons = icons
     }
 }
 
@@ -60,7 +54,7 @@ public func menuEntries(for s: MenuState) -> [MenuEntry] {
     items.append(.separator)
     if s.playlists.isEmpty { items.append(.noPlaylists) }
     for name in s.playlists {
-        items.append(.playlist(name: name, symbol: moodSymbols[name] ?? "music.note.list", checked: name == s.current))
+        items.append(.playlist(name: name, symbol: s.icons[name] ?? guessPlaylistIcon(name), checked: name == s.current))
     }
     if let notice = s.notice { items.append(.notice(notice)) }
     if let status = s.scanStatus { items.append(.scanning(status)) }
