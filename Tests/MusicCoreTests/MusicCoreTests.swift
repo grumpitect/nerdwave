@@ -570,6 +570,26 @@ final class EngineIntegrationTests: XCTestCase {
         player.stop()
     }
 
+    func testRealPauseKeepsThePosition() throws {
+        let url = try makeTone(seconds: 3, name: "pause")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let backend = EngineBackend(fadeSeconds: 0.5, muted: true)
+        let player = MusicPlayer(backend: backend, volumePercent: 25)
+        player.play(Playlist(name: "Test", tracks: [url]), weight: 1)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        player.togglePause()
+        XCTAssertFalse(player.isPlaying)
+        let paused = player.progress?.elapsed ?? 0
+        XCTAssertGreaterThan(paused, 0.4, "a paused track reports where it stopped, not 0")
+        XCTAssertEqual(player.resumePoint?.elapsed ?? 0, paused, accuracy: 0.01)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        XCTAssertEqual(player.progress?.elapsed ?? 0, paused, accuracy: 0.01, "and stays there while paused")
+        player.togglePause()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        XCTAssertGreaterThan(player.progress?.elapsed ?? 0, paused + 0.15, "then plays on from there")
+        player.stop()
+    }
+
     func testRealSeekMovesPositionWithinTheTrack() throws {
         let url = try makePaddedTone(lead: 0, tone: 30, tail: 0, name: "seek")
         defer { try? FileManager.default.removeItem(at: url) }

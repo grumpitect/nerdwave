@@ -410,6 +410,7 @@ public final class EngineBackend: AudioBackend {
     }
 
     public func pause() {
+        if current.node.isPlaying { lastPosition = current.position }
         wantsPlaying = false
         current.node.pause()
         other.node.pause()
@@ -428,7 +429,10 @@ public final class EngineBackend: AudioBackend {
     public var progress: (elapsed: Double, total: Double)? {
         let d = current
         guard d.file != nil else { return nil }
-        return (Double(d.position - d.range.start) / d.sampleRate, Double(d.range.end - d.range.start) / d.sampleRate)
+        // A paused node has no player time (position falls back to the segment start), so use the last
+        // position seen while playing; it is also where a cued or seeked track sits.
+        let position = d.node.isPlaying ? d.position : lastPosition
+        return (Double(position - d.range.start) / d.sampleRate, Double(d.range.end - d.range.start) / d.sampleRate)
     }
 
     public func seek(by seconds: Double) {
