@@ -32,6 +32,12 @@ public struct PlayQueue<RNG: RandomNumberGenerator> {
         return current
     }
 
+    /// Moves `url` to the current position (used when resuming a track), so advancing continues past it.
+    public mutating func makeCurrent(_ url: URL) {
+        guard let i = order.firstIndex(of: url), i != position else { return }
+        order.swapAt(i, position)
+    }
+
     /// Drops a track that turned out to be unplayable.
     public mutating func removeCurrent() {
         guard !order.isEmpty else { return }

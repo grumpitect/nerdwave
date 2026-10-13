@@ -10,6 +10,8 @@ final class AppModel: ObservableObject {
     private let volume = VolumeSetting()
     private let last = LastPlaylistSetting()
     private let historyStore = HistoryStore()
+    private let resumeStore = ResumeStore()
+    private var resumeTimer: Timer?
     @Published var entries: [MenuEntry] = []
     @Published var volumePercent: Int
     @Published var current: String?
@@ -39,6 +41,15 @@ final class AppModel: ObservableObject {
         player = MusicPlayer(backend: EngineBackend(), volumePercent: volume.percent, history: store.load(),
                              resolve: { name in loadPlaylists(in: AppPaths.playlists).first { $0.name == name } })
         player.onHistoryChange = { store.save($0) }
+        let t = Timer(timeInterval: 5, repeats: true) { [weak self] _ in self?.saveResumePoint() }
+        RunLoop.main.add(t, forMode: .common)
+        resumeTimer = t
+    }
+
+    /// Remembers the track and position (every few seconds, on pause and track changes, and at quit).
+    func saveResumePoint() {
+        guard let point = player.resumePoint, point != resumeStore.point else { return }
+        resumeStore.point = point
     }
 
     func refresh() {
@@ -81,10 +92,16 @@ final class AppModel: ObservableObject {
         player.play(playlist, weight: playlist.weight)
     }
 
-    /// Restores the last playlist at launch without playing it; Play starts it.
+    /// Restores the last playlist at launch without playing it. If the last track is still there it is loaded
+    /// at the saved position, so Play resumes it; picking a playlist from the menu starts fresh instead.
     func restoreLast() {
-        guard let name = last.name,
-              let playlist = loadPlaylists(in: AppPaths.playlists).first(where: { $0.name == name }) else { return }
+        let lists = loadPlaylists(in: AppPaths.playlists)
+        if let point = resumeStore.point, let playlist = lists.first(where: { $0.name == point.playlist }) {
+            last.name = playlist.name
+            player.cue(playlist, weight: playlist.weight, resuming: point.url, at: point.elapsed)
+            return
+        }
+        guard let name = last.name, let playlist = lists.first(where: { $0.name == name }) else { return }
         player.cue(playlist, weight: playlist.weight)
     }
 
@@ -681,6 +698,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return w
     }()
 
+    func applicationWillTerminate(_ notification: Notification) { model.saveResumePoint() }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // `--unregister-login` removes this app from Login Items and quits (used before renaming/removing it).
         if CommandLine.arguments.contains("--unregister-login") {
@@ -820,6 +839,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func stateChanged() {
         model.refresh()
+        model.saveResumePoint()
         updateStatusIcon()
         resizePanel()
     }

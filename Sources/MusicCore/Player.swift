@@ -13,6 +13,8 @@ public protocol AudioBackend: AnyObject {
     func load(_ url: URL) throws
     /// Fades from the current track into this one.
     func crossfade(to url: URL) throws
+    /// Loads a track paused, `elapsed` audible seconds in; the next `play()` continues from there.
+    func cue(_ url: URL, at elapsed: Double) throws
     func play()
     func pause()
     func stop()
@@ -83,6 +85,25 @@ public final class MusicPlayer {
         select(playlist, weight: weight)
         currentTrack = nil
         onChange?()
+    }
+
+    /// Selects a playlist and loads `track` paused at `elapsed` seconds, so Play picks up where the user left
+    /// off. Falls back to a plain cue when the track is missing or unreadable.
+    public func cue(_ playlist: Playlist, weight: Double, resuming track: URL, at elapsed: Double) {
+        select(playlist, weight: weight)
+        currentTrack = nil
+        if fileExists(track), (try? backend.cue(track, at: elapsed)) != nil {
+            currentTrack = track
+            queue?.makeCurrent(track)                 // Next moves on from it instead of repeating it soon
+            if history.current?.path != track.path { history.record(HistoryEntry(path: track.path, playlist: playlist.name)) }
+        }
+        onChange?()
+    }
+
+    /// Where playback is now (track, playlist, audible seconds in), for resuming after a restart.
+    public var resumePoint: ResumePoint? {
+        guard let track = currentTrack, let name = current?.name else { return nil }
+        return ResumePoint(path: track.path, playlist: name, elapsed: progress?.elapsed ?? 0)
     }
 
     /// Applies a new weight for the current playlist (after a rescan) without interrupting playback.
@@ -350,6 +371,27 @@ public final class EngineBackend: AudioBackend {
         fadeProgress = 0
     }
 
+    /// Prepares the deck without starting the engine (an idle engine would keep the audio device busy);
+    /// `play()` starts it and schedules from `lastPosition`.
+    public func cue(_ url: URL, at elapsed: Double) throws {
+        let file: AVAudioFile
+        do { file = try AVAudioFile(forReading: url) } catch { throw BackendError.unreadable(url) }
+        let range = audibleRange(of: file)
+        stop()
+        engine.stop()
+        let d = current
+        engine.disconnectNodeOutput(d.node)
+        engine.connect(d.node, to: d.mixer, format: file.processingFormat)
+        d.file = file
+        d.range = range
+        d.sampleRate = file.processingFormat.sampleRate
+        d.nearEndSent = false
+        d.mixer.outputVolume = 1
+        let frame = range.start + AVAudioFramePosition(max(0, elapsed) * d.sampleRate)
+        d.segmentStart = min(frame, max(range.start, range.end - AVAudioFramePosition(0.5 * d.sampleRate)))
+        lastPosition = d.segmentStart
+    }
+
     public func play() {
         if !engine.isRunning {
             guard (try? engine.start()) != nil else { return }
@@ -364,6 +406,7 @@ public final class EngineBackend: AudioBackend {
         if fadeProgress != nil { other.node.play() }
         wantsPlaying = true
         lastTick = Date()
+        startTimer()
     }
 
     public func pause() {

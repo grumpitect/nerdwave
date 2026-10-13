@@ -48,6 +48,33 @@ public struct TrackHistory: Codable, Equatable {
     }
 }
 
+/// Where playback was, so the next launch can load that track at that position (paused).
+public struct ResumePoint: Codable, Equatable {
+    public let path: String
+    public let playlist: String
+    /// Audible seconds into the track.
+    public let elapsed: Double
+    public init(path: String, playlist: String, elapsed: Double) {
+        self.path = path; self.playlist = playlist; self.elapsed = elapsed
+    }
+    public var url: URL { URL(fileURLWithPath: path) }
+}
+
+/// Saves the resume point across restarts.
+public final class ResumeStore {
+    public static let key = "resumePoint"
+    private let defaults: UserDefaults
+    public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+
+    public var point: ResumePoint? {
+        get { defaults.data(forKey: Self.key).flatMap { try? JSONDecoder().decode(ResumePoint.self, from: $0) } }
+        set {
+            if let newValue, let data = try? JSONEncoder().encode(newValue) { defaults.set(data, forKey: Self.key) }
+            else { defaults.removeObject(forKey: Self.key) }
+        }
+    }
+}
+
 /// Saves the history across restarts.
 public final class HistoryStore {
     public static let key = "trackHistory"

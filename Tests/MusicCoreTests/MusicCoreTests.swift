@@ -24,6 +24,11 @@ final class FakeBackend: AudioBackend {
         if unreadable.contains(url) { throw BackendError.unreadable(url) }
         crossfades.append(url); events.append("crossfade")
     }
+    var cued: [(URL, Double)] = []
+    func cue(_ url: URL, at elapsed: Double) throws {
+        if unreadable.contains(url) { throw BackendError.unreadable(url) }
+        loaded.append(url); cued.append((url, elapsed)); events.append("cue")
+    }
     func play() { isPlaying = true; events.append("play") }
     func pause() { isPlaying = false; events.append("pause") }
     func stop() { isPlaying = false; events.append("stop") }
@@ -133,6 +138,15 @@ final class LibraryTests: XCTestCase {
 }
 
 final class PlayQueueTests: XCTestCase {
+    func testMakeCurrentMovesTrackToThePlayPosition() {
+        var q = PlayQueue(tracks: tracks(6), rng: SeededRNG(state: 7))
+        let target = q.order[4]
+        q.makeCurrent(target)
+        XCTAssertEqual(q.current, target)
+        XCTAssertEqual(Set(q.order), Set(tracks(6)))
+        XCTAssertNotEqual(q.advance(), target)
+    }
+
     func testPlaysEveryTrackOncePerPassThenReshuffles() {
         var q = PlayQueue(tracks: tracks(10), rng: SeededRNG(state: 7))
         var firstPass = [q.current!]
@@ -189,6 +203,50 @@ final class PlayerTests: XCTestCase {
         p.togglePause(); XCTAssertTrue(p.isPlaying)
         p.stop()
         XCTAssertFalse(p.isPlaying); XCTAssertNil(p.current); XCTAssertNil(p.nowPlaying)
+    }
+
+    func testResumeLoadsTrackPausedAndPlayContinuesIt() {
+        let b = FakeBackend()
+        let all = tracks(5)
+        let p = MusicPlayer(backend: b, fileExists: { _ in true })
+        p.cue(Playlist(name: "Chill", tracks: all), weight: 1, resuming: all[2], at: 42)
+        XCTAssertEqual(b.cued.first?.0, all[2]); XCTAssertEqual(b.cued.first?.1, 42)
+        XCTAssertFalse(p.isPlaying, "resuming must not start playback by itself")
+        XCTAssertEqual(p.nowPlaying, "Track 3")
+        XCTAssertEqual(p.history.current?.path, all[2].path)
+        XCTAssertEqual(p.resumePoint, ResumePoint(path: all[2].path, playlist: "Chill", elapsed: 12))
+        p.togglePause()
+        XCTAssertTrue(p.isPlaying)
+        XCTAssertEqual(b.loaded, [all[2]], "Play continues the cued track instead of loading another")
+        p.next()
+        XCTAssertNotEqual(b.loaded.last, all[2], "Next moves on from the resumed track")
+    }
+
+    func testResumeFallsBackQuietlyWhenTheTrackIsGoneOrUnreadable() {
+        let all = tracks(3)
+        for broken in ["missing", "unreadable"] {
+            let b = FakeBackend()
+            if broken == "unreadable" { b.unreadable = [all[0]] }
+            let p = MusicPlayer(backend: b, fileExists: { broken == "missing" ? $0 != all[0] : true })
+            p.cue(Playlist(name: "Rock", tracks: all), weight: 1, resuming: all[0], at: 30)
+            XCTAssertEqual(p.current?.name, "Rock", broken)
+            XCTAssertNil(p.currentTrack, broken)
+            XCTAssertNil(p.lastError, "no error shown when the saved track is \(broken)")
+            p.togglePause()                                   // Play starts the playlist as usual
+            XCTAssertTrue(p.isPlaying, broken)
+        }
+    }
+
+    func testResumeStoreRoundTrip() {
+        let suite = "test.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = ResumeStore(defaults: defaults)
+        XCTAssertNil(store.point)
+        store.point = ResumePoint(path: "/m/01 A.mp3", playlist: "Chill", elapsed: 73.5)
+        XCTAssertEqual(ResumeStore(defaults: defaults).point, ResumePoint(path: "/m/01 A.mp3", playlist: "Chill", elapsed: 73.5))
+        store.point = nil
+        XCTAssertNil(ResumeStore(defaults: defaults).point)
     }
 
     func testMasterVolumeAppliesLive() {
@@ -483,6 +541,23 @@ final class EngineIntegrationTests: XCTestCase {
         XCTAssertGreaterThan(elapsed, 0.6)
         player.stop()
         XCTAssertFalse(player.isPlaying)
+    }
+
+    func testRealResumeStartsPausedAtThePositionAndPlaysOnFromThere() throws {
+        let url = try makeTone(seconds: 3, name: "resume")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let backend = EngineBackend(fadeSeconds: 0.5, muted: true)
+        let player = MusicPlayer(backend: backend, volumePercent: 25)
+        player.cue(Playlist(name: "Test", tracks: [url]), weight: 1, resuming: url, at: 1.5)
+        XCTAssertFalse(player.isPlaying)
+        XCTAssertEqual(player.progress?.elapsed ?? -1, 1.5, accuracy: 0.05)
+        player.togglePause()
+        XCTAssertTrue(player.isPlaying)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.4))
+        let elapsed = player.progress?.elapsed ?? 0
+        XCTAssertGreaterThan(elapsed, 1.6, "continues after the saved position")
+        XCTAssertLessThan(elapsed, 2.5)
+        player.stop()
     }
 
     func testRealSeekMovesPositionWithinTheTrack() throws {
