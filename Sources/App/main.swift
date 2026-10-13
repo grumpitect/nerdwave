@@ -186,6 +186,7 @@ enum Theme {
     static let textNS = NSColor(red: 0.90, green: 0.90, blue: 0.98, alpha: 1)
     static let dimNS = NSColor(red: 0.55, green: 0.50, blue: 0.70, alpha: 1)
     static let cyanNS = NSColor(red: 0.35, green: 0.90, blue: 1.00, alpha: 1)
+    static let magentaNS = NSColor(red: 1.00, green: 0.31, blue: 0.78, alpha: 1)
 }
 
 /// A row that lights up on hover, like a selected line in a terminal UI.
@@ -598,7 +599,7 @@ struct BracketButton: View {
 }
 
 /// The menu bar icon: the app artwork inside a thick rounded ring, on the same 2.4 s cycle as the panel's
-/// "playing" dot. Idle: a soft white ring. Playing: the ring pulses from hot pink to white and back.
+/// "playing" dot. Idle: a soft white ring. Playing: the ring pulses from magenta (the panel's playing dot) to white and back.
 /// Scanning: from orange to white and back. Phase 0 is the full accent color.
 enum StatusIcon {
     enum State { case idle, playing, scanning }
@@ -609,7 +610,7 @@ enum StatusIcon {
     static let appIcon: NSImage = Bundle.main.url(forResource: "AppIcon", withExtension: "icns").flatMap(NSImage.init(contentsOf:))
         ?? (NSImage(named: NSImage.applicationIconName)?.copy() as? NSImage) ?? NSImage()
     static let ringIdle = NSColor(red: 0.90, green: 0.86, blue: 0.90, alpha: 1)
-    static let ringPlaying = NSColor(red: 1.00, green: 0.36, blue: 0.63, alpha: 1)      // hot pink
+    static let ringPlaying = Theme.magentaNS             // same as the playing dot in the panel
     static let ringScanning = NSColor(red: 1.00, green: 0.78, blue: 0.40, alpha: 1)
 
     static func image(state: State, phase: Double) -> NSImage {
@@ -816,22 +817,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Animates the ring while playing or scanning. When idle, or while the panel is open, the timer stops
-    /// and the icon holds still (in the full accent color if playing or scanning).
+    /// and the icon holds still with a white ring (half a period in is the white end of the pulse).
     private func updateStatusIcon() {
         let state = iconState
         guard state != .idle, panel?.isVisible != true else {
             iconTimer?.invalidate(); iconTimer = nil
-            if shownStillState != state { statusItem.button?.image = StatusIcon.image(state: state, phase: 0) }
+            if shownStillState != state { statusItem.button?.image = StatusIcon.image(state: state, phase: StatusIcon.period / 2) }
             shownStillState = state
             return
         }
         shownStillState = nil
         guard iconTimer == nil else { return }
+        // Every pulse run starts at the white end (half a period in) and fades toward the accent color,
+        // so closing the panel (or starting to play) never jumps straight to a colored ring.
+        let start = Date().addingTimeInterval(-StatusIcon.period / 2)
         let t = Timer(timeInterval: 1.0 / 20, repeats: true) { [weak self] _ in
             guard let self else { return }
             let s = self.iconState
             if s == .idle || self.panel?.isVisible == true { self.updateStatusIcon(); return }
-            self.statusItem.button?.image = StatusIcon.image(state: s, phase: Date.timeIntervalSinceReferenceDate)
+            self.statusItem.button?.image = StatusIcon.image(state: s, phase: Date().timeIntervalSince(start))
         }
         RunLoop.main.add(t, forMode: .common)
         iconTimer = t
