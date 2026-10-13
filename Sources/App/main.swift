@@ -838,8 +838,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         resizePanel()
         p.orderFrontRegardless()
         p.makeKey()
+        // Clicks outside close the panel, except on our own menu bar icon: that click reaches togglePanel,
+        // which closes it (closing here first would make the toggle reopen it).
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            self?.closePanel()
+            guard let self else { return }
+            if let frame = self.statusItem.button?.window?.frame, frame.contains(NSEvent.mouseLocation) { return }
+            self.closePanel()
         }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
             if e.keyCode == 53 { self?.closePanel(); return nil }                         // Esc
