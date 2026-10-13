@@ -27,7 +27,7 @@ tag="v$version"
 git rev-parse -q --verify "refs/tags/$tag" >/dev/null && { echo "error: $tag already exists"; exit 1; }
 echo "Releasing $tag (was $current)"
 
-swift test --scratch-path "${TMPDIR:-/tmp}/nerdwave-swiftpm" 2>&1 | tail -1
+swift test --scratch-path "${TMPDIR:-/tmp}/nerdwave-swiftpm" 2>&1 | grep -E "Executed [0-9]+ tests" | tail -1
 
 if [ "$version" != "$current" ]; then
   /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" Info.plist

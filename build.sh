@@ -12,7 +12,7 @@ set -euo pipefail
 cd "${0:A:h}"
 
 SCRATCH="${TMPDIR:-/tmp}/nerdwave-swiftpm"
-swift test --scratch-path "$SCRATCH" 2>&1 | tail -3
+swift test --scratch-path "$SCRATCH" 2>&1 | grep -E "error: |Executed [0-9]+ tests" | tail -3
 swift build -c release --product App --scratch-path "$SCRATCH" 2>&1 | grep -E "error|Build complete" | tail -2
 
 BUILD="${TMPDIR:-/tmp}/nerdwave-build"
