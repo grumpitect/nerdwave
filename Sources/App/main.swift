@@ -232,11 +232,6 @@ struct NerdView: View {
                     .foregroundColor(Theme.dim)
                     .help("build " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev"))
                 Spacer()
-                if model.isPlaying {
-                    HStack(spacing: 5) { PulsingDot(); Text("playing") }.foregroundColor(Theme.cyan)
-                } else {
-                    Text(model.current == nil ? "○ stopped" : "○ paused").foregroundColor(Theme.dim)
-                }
             }
             ForEach(Array(model.entries.enumerated()), id: \.offset) { _, entry in row(entry) }
         }
@@ -333,7 +328,9 @@ struct NerdView: View {
                     Image(systemName: symbol).frame(width: 16).foregroundColor(checked ? Theme.magenta : Theme.cyan)
                     Text(slug(name)).foregroundColor(checked ? Theme.magenta : Theme.text)
                     Spacer()
-                    if checked { Text(model.isPlaying ? "●" : "◌").foregroundColor(Theme.magenta) }
+                    if checked {
+                        Group { if model.isPlaying { PulsingDot() } else { Text("◌") } }.foregroundColor(Theme.magenta)
+                    }
                 }
             }
         case let .openAtLogin(on):
@@ -406,7 +403,7 @@ struct DashedLine: Shape {
     }
 }
 
-/// The "●" next to "playing": fades smoothly in and out like a recording light.
+/// The "●" next to the playlist that is playing: fades smoothly in and out like a recording light.
 /// Its brightness is computed from the clock, so nothing else in the panel animates.
 struct PulsingDot: View {
     var body: some View {
