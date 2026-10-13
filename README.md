@@ -15,7 +15,7 @@ on your stream means a lot.
 <p align="center">
   <img src="docs/panel-1.5.0.png" width="340" alt="Nerdwave panel">
   &nbsp;&nbsp;
-  <img src="docs/welcome-1.5.0.png" width="440" alt="Nerdwave welcome screen">
+  <img src="docs/welcome-1.5.2.png" width="440" alt="Nerdwave welcome screen">
 </p>
 
 ## Features
@@ -87,16 +87,13 @@ My Stream Music/
 Then click **scan_music_folder…** in the panel and choose `My Stream Music`. Supported formats: mp3, m4a, aac,
 wav, aiff, flac, caf.
 
-## Using it with OBS
+## Note: capturing only Nerdwave in OBS (optional)
 
-1. In OBS: **Sources > + > macOS Audio Capture**, Method **Application Audio Capture**, Application **Nerdwave**.
-2. Leave its OBS slider at 0 dB and set the level with Nerdwave's volume bar, so what you hear in your
-   headphones is what viewers hear.
-3. Optional: add a **Compressor** filter to the music source with your mic as the sidechain to duck the music
-   while you talk.
-
-**If the stream has no music:** OBS builds its list of capturable apps when it starts. If Nerdwave was quit
-and reopened while OBS was running, restart OBS (or open the source's properties) so it re-attaches.
+If your stream already captures your Mac's desktop audio, Nerdwave's music is included and there is nothing to
+set up. If you'd rather give the music its own source (its own slider, filters, or keeping other Mac sounds off
+stream), add **Sources > + > macOS Audio Capture** with Method **Application Audio Capture** and Application
+**Nerdwave**. OBS builds its list of apps when it starts, so if Nerdwave was quit and reopened while OBS was
+running, restart OBS (or open the source's properties) so it re-attaches.
 
 ## How playlists work
 

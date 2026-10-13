@@ -584,9 +584,8 @@ struct WelcomeView: View {
             Text("// how it works").foregroundColor(Theme.dim)
             step("01", "pick your music folder", "Each subfolder becomes a playlist (a mood). Nerdwave measures every track's loudness so all moods play at the same level.")
             step("02", "click the icon in the menu bar", "Choose a mood. Tracks shuffle forever and crossfade, skipping silent intros and endings. Want it at startup? Turn on open_at_login.")
-            step("03", "add it to OBS", "Sources > + > macOS Audio Capture > Application: Nerdwave. Viewers hear the music; the rest of your Mac stays off stream. If Nerdwave restarts while OBS is open, restart OBS.")
             HStack(alignment: .top, spacing: 10) {
-                Text("04").foregroundColor(Theme.magenta).bold()
+                Text("03").foregroundColor(Theme.magenta).bold()
                 VStack(alignment: .leading, spacing: 2) {
                     Text("use music you're allowed to stream").foregroundColor(Theme.text).bold()
                     LinkedText(segments: [("Nerdwave ships with no music. ", nil), ("StreamBeats", streamBeatsURL),
