@@ -21,6 +21,14 @@ final class AppModel: ObservableObject {
     /// Called before the folder picker opens (the panel closes so the picker can take focus).
     var onWillPickFolder: (() -> Void)?
     var showWelcome: (() -> Void)?
+    /// Closes the menu panel (used after opening a link).
+    var closePanel: (() -> Void)?
+
+    /// Opens a link in the browser and closes the panel.
+    func open(_ url: URL) {
+        closePanel?()
+        NSWorkspace.shared.open(url)
+    }
     var hasPlaylists: Bool { !loadPlaylists(in: AppPaths.playlists).isEmpty }
 
     init() {
@@ -131,7 +139,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func openFeedback() { NSWorkspace.shared.open(feedbackURL) }
+    func openFeedback() { open(feedbackURL) }
 
     func togglePause() { player.togglePause() }
     func next() { player.next() }
@@ -214,7 +222,7 @@ struct NerdView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
-                HoverLink(text: "nerdwave", color: Theme.magenta, bold: true, url: channelURL)
+                HoverLink(text: "nerdwave", color: Theme.magenta, bold: true, url: channelURL, open: { model.open($0) })
                 Text("v" + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"))
                     .foregroundColor(Theme.dim)
                     .help("build " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev"))
@@ -410,6 +418,8 @@ struct HoverLink: View {
     let color: Color
     var bold = false
     let url: URL
+    /// Opens the link; defaults to the browser.
+    var open: (URL) -> Void = { NSWorkspace.shared.open($0) }
     @State private var hover = false
     var body: some View {
         Text(text).bold(bold).foregroundColor(color).underline(hover)
@@ -417,7 +427,10 @@ struct HoverLink: View {
                 hover = inside
                 if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
             }
-            .onTapGesture { NSWorkspace.shared.open(url) }
+            .onTapGesture {
+                if hover { hover = false; NSCursor.pop() }      // don't leave the hand cursor behind
+                open(url)
+            }
             .help(url.absoluteString)
     }
 }
@@ -690,6 +703,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onQuit = { NSApp.terminate(nil) }
         model.onWillPickFolder = { [weak self] in self?.closePanel() }
         model.showWelcome = { [weak self] in self?.showWelcome() }
+        model.closePanel = { [weak self] in self?.closePanel() }
         model.player.onChange = { [weak self] in self?.stateChanged() }
 
 
