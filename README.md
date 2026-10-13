@@ -130,9 +130,9 @@ sounds like 25% in VLC.
 ## Development
 
 ```bash
-swift test      # 51 tests: playlists, scanning, icons, loudness (incl. the EBU -23 LUFS reference tone),
+swift test      # 52 tests: playlists, scanning, icons, loudness (incl. the EBU -23 LUFS reference tone),
                 # weights and rebalancing, shuffle, history, crossfade, seek, error handling,
-                # menu layout, and real audio playback (these need an audio output device)
+                # menu layout, and real audio playback (muted, so tests are silent; they need an audio output device)
 swift build
 ```
 

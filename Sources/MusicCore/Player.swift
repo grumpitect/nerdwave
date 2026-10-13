@@ -295,13 +295,23 @@ public final class EngineBackend: AudioBackend {
     public var onNearEnd: (() -> Void)?
     public var onFinished: (() -> Void)?
 
-    public init(fadeSeconds: Double = 3) {
+    /// Volume (the slider times the playlist weight) is applied here, before the engine's main mixer.
+    private let volumeMixer = AVAudioMixerNode()
+    /// True when built with `muted: true`: everything plays and is timed as usual, but nothing is heard.
+    public let isMuted: Bool
+
+    /// `muted: true` silences the final output (used by the tests so they don't beep through the speakers).
+    public init(fadeSeconds: Double = 3, muted: Bool = false) {
         self.fadeSeconds = fadeSeconds
+        isMuted = muted
+        engine.attach(volumeMixer)
+        engine.connect(volumeMixer, to: engine.mainMixerNode, format: nil)
         for d in decks {
             engine.attach(d.node)
             engine.attach(d.mixer)
-            engine.connect(d.mixer, to: engine.mainMixerNode, format: nil)
+            engine.connect(d.mixer, to: volumeMixer, format: nil)
         }
+        engine.mainMixerNode.outputVolume = muted ? 0 : 1
         // The engine stops itself when the output device changes (AirPods, USB interface...):
         // restart it and continue the current track from where it was.
         NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine,
@@ -368,7 +378,9 @@ public final class EngineBackend: AudioBackend {
         for d in decks { d.generation += 1; d.node.stop() }
     }
 
-    public func setAmplitude(_ value: Float) { engine.mainMixerNode.outputVolume = value }
+    public func setAmplitude(_ value: Float) { volumeMixer.outputVolume = value }
+    /// The output level actually reaching the speakers (0 when muted).
+    var outputLevel: Float { volumeMixer.outputVolume * engine.mainMixerNode.outputVolume }
 
     public var progress: (elapsed: Double, total: Double)? {
         let d = current

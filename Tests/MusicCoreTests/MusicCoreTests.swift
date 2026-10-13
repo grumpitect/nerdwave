@@ -466,7 +466,7 @@ final class EngineIntegrationTests: XCTestCase {
         let urls = [try makePaddedTone(lead: 0.5, tone: 1.5, tail: 3.0, name: "a"),
                     try makePaddedTone(lead: 0.5, tone: 1.5, tail: 3.0, name: "b")]
         defer { urls.forEach { try? FileManager.default.removeItem(at: $0) } }
-        let backend = EngineBackend(fadeSeconds: 0.5)
+        let backend = EngineBackend(fadeSeconds: 0.5, muted: true)
         let player = MusicPlayer(backend: backend, volumePercent: 25)
         player.play(Playlist(name: "Test", tracks: urls), weight: 1)
         XCTAssertTrue(player.isPlaying)
@@ -488,7 +488,7 @@ final class EngineIntegrationTests: XCTestCase {
     func testRealSeekMovesPositionWithinTheTrack() throws {
         let url = try makePaddedTone(lead: 0, tone: 30, tail: 0, name: "seek")
         defer { try? FileManager.default.removeItem(at: url) }
-        let player = MusicPlayer(backend: EngineBackend(), volumePercent: 10)
+        let player = MusicPlayer(backend: EngineBackend(muted: true), volumePercent: 10)
         player.play(Playlist(name: "Seek", tracks: [url]), weight: 1)
         let done = expectation(description: "seeked")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
@@ -507,10 +507,22 @@ final class EngineIntegrationTests: XCTestCase {
         player.stop()
     }
 
+    func testMutedEngineIsSilentButStillPlays() throws {
+        let url = try makePaddedTone(lead: 0, tone: 2, tail: 0, name: "muted")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let backend = EngineBackend(muted: true)
+        let player = MusicPlayer(backend: backend, volumePercent: 100)
+        player.play(Playlist(name: "Muted", tracks: [url]), weight: 1)
+        XCTAssertTrue(player.isPlaying, "still plays and times normally")
+        XCTAssertEqual(backend.outputLevel, 0, "nothing reaches the speakers")
+        XCTAssertFalse(EngineBackend().isMuted)
+        player.stop()
+    }
+
     func testUnreadableFileThrows() {
         let bad = FileManager.default.temporaryDirectory.appendingPathComponent("bad-\(UUID().uuidString).mp3")
         try? "not audio".write(to: bad, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: bad) }
-        XCTAssertThrowsError(try EngineBackend().load(bad))
+        XCTAssertThrowsError(try EngineBackend(muted: true).load(bad))
     }
 }
