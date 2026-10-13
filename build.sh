@@ -20,6 +20,8 @@ APP="$BUILD/Nerdwave.app"
 rm -rf "$BUILD" && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$SCRATCH/release/App" "$APP/Contents/MacOS/Nerdwave"
 cp Info.plist "$APP/Contents/Info.plist"
+# Build number = number of commits, so every installed build is unique and increasing (repo files untouched).
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(git rev-list --count HEAD 2>/dev/null || echo 0)" "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 
 if [ -n "${SIGN_IDENTITY:-}" ]; then

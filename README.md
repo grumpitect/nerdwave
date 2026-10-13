@@ -34,12 +34,20 @@ on your stream means a lot.
   and your history survive restarts.
 - **Open at login** toggle (off by default), and a `feedback` link straight to GitHub issues.
 
+## Download
+
+Grab the latest **Nerdwave-x.y.z.zip** from [Releases](https://github.com/grumpitect/nerdwave/releases/latest),
+unzip it, move **Nerdwave.app** to Applications and open it.
+
+Nerdwave is free and not notarized by Apple, so the first time macOS says it can't verify the developer. Open
+**System Settings > Privacy & Security**, scroll down and click **Open Anyway**. You only need to do this once.
+
 ## Requirements
 
 - macOS 14 Sonoma or later (developed and tested on Apple Silicon; Intel builds are untested)
 - Xcode or the Xcode Command Line Tools (Swift 5.9+) to build from source
 
-## Install (build from source)
+## Build from source
 
 ```bash
 git clone https://github.com/grumpitect/nerdwave.git
@@ -48,7 +56,8 @@ cd nerdwave
 ```
 
 `build.sh` runs the tests, builds `Nerdwave.app`, and installs it to `~/Applications`. Open it from there;
-a welcome screen explains the rest.
+a welcome screen explains the rest. Maintainers publish a release with `./release.sh` (patch bump by default;
+`minor`, `major` or an exact `X.Y.Z` also work).
 
 **Keep permissions across rebuilds (optional, for developers).** macOS remembers folder access per code
 signature. Ad hoc builds get a new signature every time, so macOS may ask again (or quietly block your music

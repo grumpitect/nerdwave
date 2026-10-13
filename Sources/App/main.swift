@@ -217,6 +217,7 @@ struct NerdView: View {
                 HoverLink(text: "nerdwave", color: Theme.magenta, bold: true, url: channelURL)
                 Text("v" + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"))
                     .foregroundColor(Theme.dim)
+                    .help("build " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev"))
                 Spacer()
                 if model.isPlaying {
                     HStack(spacing: 5) { PulsingDot(); Text("playing") }.foregroundColor(Theme.cyan)
