@@ -1,0 +1,34 @@
+name: Bug report
+description: Something in Nerdwave isn't working right
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Click the menu bar icon
+        2. ...
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: e.g. macOS 15.3
+    validations:
+      required: true
+  - type: input
+    id: obs
+    attributes:
+      label: OBS version (if the problem involves OBS)
+      placeholder: e.g. OBS 32.2.2
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else? (screenshots, music formats, folder layout)
