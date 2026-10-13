@@ -15,7 +15,7 @@ on your stream means a lot.
 <p align="center">
   <img src="docs/panel-1.5.0.png" width="340" alt="Nerdwave panel">
   &nbsp;&nbsp;
-  <img src="docs/welcome-1.5.2.png" width="440" alt="Nerdwave welcome screen">
+  <img src="docs/welcome-1.5.3.png" width="440" alt="Nerdwave welcome screen">
 </p>
 
 ## Features
