@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/icon.png" width="512" alt="Nerdwave icon"></p>
+<p align="center"><img src="docs/nerdwave-icon.png" width="800" alt="Nerdwave icon"></p>
 
 # Nerdwave
 
@@ -13,9 +13,9 @@ Made for the [Nerdative](https://www.youtube.com/@nerdative) channel on YouTube.
 on your stream means a lot.
 
 <p align="center">
-  <img src="docs/panel.png" width="340" alt="Nerdwave panel">
+  <img src="docs/panel-1.5.0.png" width="340" alt="Nerdwave panel">
   &nbsp;&nbsp;
-  <img src="docs/welcome.png" width="440" alt="Nerdwave welcome screen">
+  <img src="docs/welcome-1.5.0.png" width="440" alt="Nerdwave welcome screen">
 </p>
 
 ## Features
@@ -137,7 +137,8 @@ swift build
 
 - `Sources/MusicCore`: everything testable (player, crossfade engine, loudness meter, scanner, menu model).
 - `Sources/App`: the AppKit + SwiftUI menu bar app.
-- `Tools/make_icon.py`: regenerates the icon (`pip install pillow numpy`, then `python3 Tools/make_icon.py Resources`).
+- `Tools/make_icon.py`: regenerates the icon (`pip install pillow numpy`, then `python3 Tools/make_icon.py Resources`;
+  `python3 Tools/make_icon.py --png docs/nerdwave-icon.png 2048` renders the large README version).
 
 Two macOS details worth knowing if you hack on it: OBS's per-app capture only lists apps that own a window,
 so Nerdwave keeps an invisible 1x1 window; and playback uses `AVAudioEngine` so audio is rendered inside the

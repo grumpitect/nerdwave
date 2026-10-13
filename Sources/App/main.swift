@@ -771,7 +771,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             w.contentView = host
             host.frame = NSRect(origin: .zero, size: size)
             host.layoutSubtreeIfNeeded()
-            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+            if let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * 2), pixelsHigh: Int(size.height * 2),
+                                          bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                          colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) {
+                rep.size = size                               // 2x, sharp on Retina and in the README
                 host.cacheDisplay(in: host.bounds, to: rep)
                 try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
             }
