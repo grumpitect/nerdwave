@@ -637,8 +637,7 @@ struct BracketButton: View {
     }
 }
 
-/// The menu bar icon: the app artwork inside a thick rounded ring. Idle (and while the panel is open) the ring
-/// is soft white. Playing: the panel border's cyan-to-magenta gradient, turning once every 2.4 s (the panel's
+/// The menu bar icon: the app artwork inside a thick rounded ring. Idle, the ring is soft white. Playing: the panel border's cyan-to-magenta gradient, turning once every 2.4 s (the panel's
 /// playing dot cycle). Scanning: the same, with orange in place of cyan. Each run fades in from white.
 enum StatusIcon {
     enum State { case idle, playing, scanning }
@@ -936,11 +935,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.isScanning ? .scanning : (model.player.isPlaying ? .playing : .idle)
     }
 
-    /// Turns the gradient ring while playing or scanning. When idle, or while the panel is open, the timer stops
-    /// and the icon holds still with a white ring.
+    /// Turns the gradient ring while playing or scanning (also while the panel is open). When idle the timer
+    /// stops and the icon holds still with a white ring.
     private func updateStatusIcon() {
         let state = iconState
-        guard state != .idle, panel?.isVisible != true else {
+        guard state != .idle else {
             iconTimer?.invalidate(); iconTimer = nil
             if shownStillState != state { statusItem.button?.image = StatusIcon.image(state: state, elapsed: nil) }
             shownStillState = state
@@ -948,13 +947,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         shownStillState = nil
         guard iconTimer == nil else { return }
-        // Every run starts from the white ring and fades into the turning gradient, so closing the panel
-        // (or starting to play) never jumps straight to color.
+        // Every run starts from the white ring and fades into the turning gradient, so starting to play
+        // never jumps straight to color.
         let start = Date()
         let t = Timer(timeInterval: 1.0 / 20, repeats: true) { [weak self] _ in
             guard let self else { return }
             let s = self.iconState
-            if s == .idle || self.panel?.isVisible == true { self.updateStatusIcon(); return }
+            if s == .idle { self.updateStatusIcon(); return }
             self.statusItem.button?.image = StatusIcon.image(state: s, elapsed: Date().timeIntervalSince(start))
         }
         RunLoop.main.add(t, forMode: .common)
@@ -996,7 +995,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let t = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in self?.model.refresh() }
         RunLoop.main.add(t, forMode: .common)
         refreshTimer = t
-        updateStatusIcon()
     }
 
     private func closePanel() {
@@ -1005,7 +1003,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let m = keyMonitor { NSEvent.removeMonitor(m) }
         clickMonitor = nil; keyMonitor = nil
         refreshTimer?.invalidate(); refreshTimer = nil
-        updateStatusIcon()
     }
 
     private func makePanel() -> NerdPanel {
