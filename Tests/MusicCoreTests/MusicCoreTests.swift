@@ -104,7 +104,7 @@ final class LibraryTests: XCTestCase {
     }
 
     func testTrackDisplayName() {
-        XCTAssertEqual(trackDisplayName(URL(fileURLWithPath: "/a/01 Mindless Matter.mp3")), "Mindless Matter")
+        XCTAssertEqual(trackDisplayName(URL(fileURLWithPath: "/a/01 Track Name.mp3")), "Track Name")
         XCTAssertEqual(trackDisplayName(URL(fileURLWithPath: "/a/No Number.mp3")), "No Number")
         XCTAssertEqual(trackDisplayName(URL(fileURLWithPath: "/a/2049.mp3")), "2049")
     }

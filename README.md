@@ -71,8 +71,7 @@ folder) after each rebuild. A free self-signed certificate fixes that:
 
 Nerdwave ships with **no music**. Use music that is cleared for streaming, for example
 [StreamBeats](https://www.streambeats.com) (free, made for streamers, downloadable from
-[their Bandcamp](https://streambeats.bandcamp.com)). Respect each library's license: most allow use in your
-streams and videos but not redistributing the files.
+[their Bandcamp](https://streambeats.bandcamp.com)).
 
 Organize it like this, one folder per mood:
 
@@ -108,10 +107,10 @@ treat as a comment:
 
 ```
 #EXTM3U
-#WEIGHT: 87%
-#LOUDNESS: -11.97 LUFS
-#EXTINF:144,Mindless Matter
-/Users/you/Music/My Stream Music/Chill/Album A/01 Mindless Matter.mp3
+#WEIGHT: 90%
+#LOUDNESS: -12.00 LUFS
+#EXTINF:180,Track Name
+/Users/you/Music/My Stream Music/Chill/Album A/01 Track Name.mp3
 ```
 
 `#LOUDNESS:` is the mood's median track loudness. After every scan Nerdwave rebalances **all** playlists from

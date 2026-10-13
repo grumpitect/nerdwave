@@ -68,7 +68,7 @@ public func amplitude(weight: Double, percent: Int) -> Float {
     return Float(pow(p * min(1, max(0, weight)), 3))
 }
 
-/// "01 Mindless Matter.mp3" -> "Mindless Matter".
+/// "01 Track Name.mp3" -> "Track Name".
 public func trackDisplayName(_ url: URL) -> String {
     let name = url.deletingPathExtension().lastPathComponent
     if let space = name.firstIndex(of: " "), name[..<space].allSatisfy(\.isNumber), name.index(after: space) < name.endIndex {
