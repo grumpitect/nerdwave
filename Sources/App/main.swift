@@ -228,10 +228,10 @@ struct NerdView: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
                 HoverLink(text: "nerdwave", color: Theme.magenta, bold: true, url: channelURL, open: { model.open($0) })
+                Spacer()
                 Text("v" + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"))
                     .foregroundColor(Theme.dim)
                     .help("build " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev"))
-                Spacer()
             }
             ForEach(Array(model.entries.enumerated()), id: \.offset) { _, entry in row(entry) }
         }
