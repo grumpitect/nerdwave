@@ -468,6 +468,16 @@ final class MenuTests: XCTestCase {
         XCTAssertTrue(e.contains(.openAtLogin(on: true)))
     }
 
+    func testScanFollowsThePlaylistsInTheirSection() {
+        let names = (1...12).map { "Mood \($0)" }
+        let e = menuEntries(for: MenuState(playlists: names, current: nil, isPlaying: false, nowPlaying: nil,
+                                           volumePercent: 25, openAtLogin: false))
+        let lastPlaylist = e.lastIndex { if case .playlist = $0 { return true }; return false }!
+        XCTAssertEqual(e[lastPlaylist + 1], .scanFolder(highlighted: false), "right under the list, outside its scroll")
+        XCTAssertEqual(e[lastPlaylist + 2], .separator)
+        XCTAssertEqual(e[lastPlaylist + 3], .welcome)
+    }
+
     func testLayoutWhenIdleAndEmpty() {
         let e = menuEntries(for: MenuState(playlists: [], current: nil, isPlaying: false, nowPlaying: nil,
                                            volumePercent: 100, openAtLogin: false))

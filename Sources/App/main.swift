@@ -251,7 +251,15 @@ struct NerdView: View {
                     .foregroundColor(Theme.dim)
                     .help("build " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev"))
             }
-            ForEach(Array(model.entries.enumerated()), id: \.offset) { _, entry in row(entry) }
+            let entries = model.entries
+            let isPlaylist: (MenuEntry) -> Bool = { if case .playlist = $0 { return true }; return false }
+            if let first = entries.firstIndex(where: isPlaylist), let last = entries.lastIndex(where: isPlaylist) {
+                ForEach(Array(entries[..<first].enumerated()), id: \.offset) { _, entry in row(entry) }
+                playlistList(Array(entries[first...last]))
+                ForEach(Array(entries[(last + 1)...].enumerated()), id: \.offset) { _, entry in row(entry) }
+            } else {
+                ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in row(entry) }
+            }
         }
         .font(Theme.font)
         .foregroundColor(Theme.text)
@@ -263,6 +271,33 @@ struct NerdView: View {
                     lineWidth: 1.2))
         .shadow(color: Theme.magenta.opacity(0.28), radius: 4)
         .padding(5)           // room for the glow
+    }
+
+    static let playlistRowHeight: CGFloat = 22
+    static let visiblePlaylists = 7
+
+    /// The playlists. More than seven scroll inside the panel: seven and a half rows show, so the cut-off row
+    /// hints that there is more, and the list starts scrolled to the active playlist.
+    @ViewBuilder private func playlistList(_ items: [MenuEntry]) -> some View {
+        let rows = VStack(alignment: .leading, spacing: 5) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, entry in
+                row(entry).frame(height: Self.playlistRowHeight).id(playlistName(entry))
+            }
+        }
+        if items.count > Self.visiblePlaylists {
+            ScrollViewReader { proxy in
+                ScrollView(.vertical) { rows }
+                    .frame(height: (CGFloat(Self.visiblePlaylists) + 0.5) * (Self.playlistRowHeight + 5) - 5)
+                    .onAppear { if let c = model.current { proxy.scrollTo(c, anchor: .center) } }
+            }
+        } else {
+            rows
+        }
+    }
+
+    private func playlistName(_ entry: MenuEntry) -> String? {
+        if case let .playlist(name, _, _) = entry { return name }
+        return nil
     }
 
     @ViewBuilder private func row(_ entry: MenuEntry) -> some View {
@@ -771,12 +806,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let host = NSHostingView(rootView: NerdView(model: model))
             let size = host.fittingSize
             print("fitting size:", size)
-            host.frame = NSRect(origin: .zero, size: size)
-            let renderer = ImageRenderer(content: NerdView(model: model).frame(width: size.width, height: size.height))
-            renderer.scale = 2
-            if let img = renderer.nsImage, let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
-               let png = rep.representation(using: .png, properties: [:]) {
-                try? png.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
+            // Drawn through a real (offscreen) window at 2x: ImageRenderer can't draw scroll views.
+            let window = NSWindow(contentRect: NSRect(origin: NSPoint(x: -10_000, y: -10_000), size: size),
+                                  styleMask: [.borderless], backing: .buffered, defer: false)
+            window.backgroundColor = .clear
+            window.isOpaque = false
+            window.contentView = host
+            window.orderFrontRegardless()
+            host.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.3))     // let the scroll view lay out and scroll
+            if let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * 2), pixelsHigh: Int(size.height * 2),
+                                          bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                          colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) {
+                rep.size = size
+                host.cacheDisplay(in: host.bounds, to: rep)
+                if let png = rep.representation(using: .png, properties: [:]) {
+                    try? png.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
+                }
             }
             exit(0)
         }

@@ -45,7 +45,8 @@ public struct MenuState {
     }
 }
 
-/// Transport controls first, then what's playing and the volume, the playlists, and Exit last.
+/// Transport controls first, then what's playing and the volume, the playlists (the panel scrolls them when
+/// there are many) with the scan row right under them, then welcome, feedback, open at login, and Exit last.
 public func menuEntries(for s: MenuState) -> [MenuEntry] {
     var items: [MenuEntry] = [.transport(playing: s.isPlaying, enabled: s.current != nil,
                                          canGoBack: s.canGoBack && s.current != nil)]
