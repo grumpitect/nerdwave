@@ -633,39 +633,42 @@ struct BracketButton: View {
     }
 }
 
-/// The menu bar icon: the app artwork inside a thick rounded ring, on the same 2.4 s cycle as the panel's
-/// "playing" dot. Idle: a soft white ring. Playing: the ring pulses from magenta (the panel's playing dot) to white and back.
-/// Scanning: from orange to white and back. Phase 0 is the full accent color.
+/// The menu bar icon: the app artwork inside a thick rounded ring. Idle (and while the panel is open) the ring
+/// is soft white. Playing: the panel border's cyan-to-magenta gradient, turning once every 2.4 s (the panel's
+/// playing dot cycle). Scanning: the same, with orange in place of cyan. Each run fades in from white.
 enum StatusIcon {
     enum State { case idle, playing, scanning }
     static let size = NSSize(width: 22, height: 22)
     static let period = 2.4
+    static let fadeIn = 0.6
     /// Read straight from the bundle's .icns: `NSImage.applicationIconName` comes back wrapped in the
     /// system's own light frame on recent macOS, which showed up as an inner white border.
     static let appIcon: NSImage = Bundle.main.url(forResource: "AppIcon", withExtension: "icns").flatMap(NSImage.init(contentsOf:))
         ?? (NSImage(named: NSImage.applicationIconName)?.copy() as? NSImage) ?? NSImage()
     static let ringIdle = NSColor(red: 0.90, green: 0.86, blue: 0.90, alpha: 1)
-    static let ringPlaying = Theme.magentaNS             // same as the playing dot in the panel
     static let ringScanning = NSColor(red: 1.00, green: 0.78, blue: 0.40, alpha: 1)
 
-    static func image(state: State, phase: Double) -> NSImage {
+    /// `elapsed` is seconds since this animation run started; nil draws the still white ring.
+    static func image(state: State, elapsed: Double?) -> NSImage {
         NSImage(size: size, flipped: false) { rect in
             let outer = rect.insetBy(dx: 1, dy: 1)
             let ring: CGFloat = 2.2
             let body = outer.insetBy(dx: ring, dy: ring)
-            let t = CGFloat(0.5 + 0.5 * cos(2 * .pi * phase / period))          // 1 -> 0 -> 1
-            let color: NSColor
-            switch state {
-            case .idle: color = ringIdle
-            case .playing: color = ringIdle.blended(withFraction: t, of: ringPlaying) ?? ringIdle
-            case .scanning: color = ringIdle.blended(withFraction: t, of: ringScanning) ?? ringIdle
-            }
-            // Only the ring itself (even-odd), so a see-through ring shows the menu bar, not a backing fill.
+            // Only the ring itself (even-odd), so the menu bar shows around it, not a backing fill.
             let ringPath = NSBezierPath(roundedRect: outer, xRadius: 5.5, yRadius: 5.5)
             ringPath.append(NSBezierPath(roundedRect: body, xRadius: 3.6, yRadius: 3.6))
             ringPath.windingRule = .evenOdd
-            color.setFill()
-            ringPath.fill()
+            if state == .idle || elapsed == nil {
+                ringIdle.setFill()
+                ringPath.fill()
+            } else if let elapsed {
+                let fade = CGFloat(min(1, elapsed / fadeIn))
+                let colors = [state == .playing ? Theme.cyanNS : ringScanning, Theme.magentaNS]
+                    .map { ringIdle.blended(withFraction: fade, of: $0) ?? $0 }
+                // -45 degrees is the panel's top-left to bottom-right; the gradient then turns clockwise.
+                let angle = -45 - 360 * CGFloat(elapsed / period)
+                NSGradient(colors: colors)?.draw(in: ringPath, angle: angle)
+            }
             // Artwork without its shadow: only the rounded square body of the 1024 px icon (inset 100 px).
             let src = appIcon.size
             let crop = NSRect(x: src.width * 100 / 1024, y: src.height * 100 / 1024,
@@ -777,7 +780,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // `--snapshot-icon <file.png>` renders the menu bar icon states (idle, playing, scanning; bright and dim).
         if let i = CommandLine.arguments.firstIndex(of: "--snapshot-icon"), CommandLine.arguments.indices.contains(i + 1) {
-            let frames: [(StatusIcon.State, Double)] = [(.idle, 0), (.playing, 0), (.playing, 0.6), (.playing, 1.2), (.scanning, 0), (.scanning, 1.2)]
+            let frames: [(StatusIcon.State, Double?)] = [(.idle, nil), (.playing, 0.3), (.playing, 0.6), (.playing, 1.2), (.playing, 1.8), (.scanning, 0.6), (.scanning, 1.8)]
             let scale = 4, cell = Int(StatusIcon.size.width) * scale, gap = 8
             let width = cell * frames.count + gap * (frames.count - 1)
             if let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: cell, bitsPerSample: 8,
@@ -789,7 +792,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1).setFill()
                 NSRect(x: 0, y: 0, width: width, height: cell).fill()
                 for (k, f) in frames.enumerated() {
-                    StatusIcon.image(state: f.0, phase: f.1)
+                    StatusIcon.image(state: f.0, elapsed: f.1)
                         .draw(in: NSRect(x: k * (cell + gap), y: 0, width: cell, height: cell))
                 }
                 NSGraphicsContext.restoreGraphicsState()
@@ -829,7 +832,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let button = statusItem.button {
             // The app icon itself, scaled to menu bar size.
-            button.image = StatusIcon.image(state: .idle, phase: 0)
+            button.image = StatusIcon.image(state: .idle, elapsed: nil)
             button.imageScaling = .scaleNone
             button.toolTip = "Nerdwave"
             button.target = self
@@ -862,26 +865,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.isScanning ? .scanning : (model.player.isPlaying ? .playing : .idle)
     }
 
-    /// Animates the ring while playing or scanning. When idle, or while the panel is open, the timer stops
-    /// and the icon holds still with a white ring (half a period in is the white end of the pulse).
+    /// Turns the gradient ring while playing or scanning. When idle, or while the panel is open, the timer stops
+    /// and the icon holds still with a white ring.
     private func updateStatusIcon() {
         let state = iconState
         guard state != .idle, panel?.isVisible != true else {
             iconTimer?.invalidate(); iconTimer = nil
-            if shownStillState != state { statusItem.button?.image = StatusIcon.image(state: state, phase: StatusIcon.period / 2) }
+            if shownStillState != state { statusItem.button?.image = StatusIcon.image(state: state, elapsed: nil) }
             shownStillState = state
             return
         }
         shownStillState = nil
         guard iconTimer == nil else { return }
-        // Every pulse run starts at the white end (half a period in) and fades toward the accent color,
-        // so closing the panel (or starting to play) never jumps straight to a colored ring.
-        let start = Date().addingTimeInterval(-StatusIcon.period / 2)
+        // Every run starts from the white ring and fades into the turning gradient, so closing the panel
+        // (or starting to play) never jumps straight to color.
+        let start = Date()
         let t = Timer(timeInterval: 1.0 / 20, repeats: true) { [weak self] _ in
             guard let self else { return }
             let s = self.iconState
             if s == .idle || self.panel?.isVisible == true { self.updateStatusIcon(); return }
-            self.statusItem.button?.image = StatusIcon.image(state: s, phase: Date().timeIntervalSince(start))
+            self.statusItem.button?.image = StatusIcon.image(state: s, elapsed: Date().timeIntervalSince(start))
         }
         RunLoop.main.add(t, forMode: .common)
         iconTimer = t
