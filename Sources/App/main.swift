@@ -23,6 +23,8 @@ final class AppModel: ObservableObject {
     var showWelcome: (() -> Void)?
     /// Closes the menu panel (used after opening a link).
     var closePanel: (() -> Void)?
+    /// Called after every refresh (the menu bar icon follows playing/scanning state).
+    var onRefresh: (() -> Void)?
 
     /// Opens a link in the browser and closes the panel.
     func open(_ url: URL) {
@@ -63,6 +65,7 @@ final class AppModel: ObservableObject {
             isPlaying: isPlaying, nowPlaying: nowPlaying, volumePercent: volumePercent,
             openAtLogin: SMAppService.mainApp.status == .enabled, canGoBack: player.canGoBack,
             scanStatus: scanStatus, notice: player.lastError, icons: icons))
+        onRefresh?()
     }
 
     func setVolume(_ p: Int) {
@@ -103,7 +106,7 @@ final class AppModel: ObservableObject {
         scan(folder)
     }
 
-    private var isScanning = false
+    private(set) var isScanning = false
 
     func scan(_ folder: URL) {
         guard !isScanning else { return }
@@ -578,6 +581,52 @@ struct BracketButton: View {
     }
 }
 
+/// The menu bar icon: the app artwork inside a thick rounded ring, on the same 2.4 s cycle as the panel's
+/// "playing" dot. Idle: a soft white ring. Playing: a lavender ring that fades out to transparent and
+/// back. Scanning: the ring pulses from white to orange and back.
+enum StatusIcon {
+    enum State { case idle, playing, scanning }
+    static let size = NSSize(width: 22, height: 22)
+    static let period = 2.4
+    /// Read straight from the bundle's .icns: `NSImage.applicationIconName` comes back wrapped in the
+    /// system's own light frame on recent macOS, which showed up as an inner white border.
+    static let appIcon: NSImage = Bundle.main.url(forResource: "AppIcon", withExtension: "icns").flatMap(NSImage.init(contentsOf:))
+        ?? (NSImage(named: NSImage.applicationIconName)?.copy() as? NSImage) ?? NSImage()
+    static let ringIdle = NSColor(red: 0.90, green: 0.86, blue: 0.90, alpha: 1)
+    static let ringPlaying = NSColor(red: 0.84, green: 0.67, blue: 1.00, alpha: 1)      // lavender
+    static let ringScanning = NSColor(red: 1.00, green: 0.78, blue: 0.40, alpha: 1)
+
+    static func image(state: State, phase: Double) -> NSImage {
+        NSImage(size: size, flipped: false) { rect in
+            let outer = rect.insetBy(dx: 1, dy: 1)
+            let ring: CGFloat = 2.2
+            let body = outer.insetBy(dx: ring, dy: ring)
+            let t = CGFloat(0.5 + 0.5 * cos(2 * .pi * phase / period))          // 1 -> 0 -> 1
+            let color: NSColor
+            switch state {
+            case .idle: color = ringIdle
+            case .playing: color = ringPlaying.withAlphaComponent(t)
+            case .scanning: color = ringIdle.blended(withFraction: t, of: ringScanning) ?? ringIdle
+            }
+            // Only the ring itself (even-odd), so a see-through ring shows the menu bar, not a backing fill.
+            let ringPath = NSBezierPath(roundedRect: outer, xRadius: 5.5, yRadius: 5.5)
+            ringPath.append(NSBezierPath(roundedRect: body, xRadius: 3.6, yRadius: 3.6))
+            ringPath.windingRule = .evenOdd
+            color.setFill()
+            ringPath.fill()
+            // Artwork without its shadow: only the rounded square body of the 1024 px icon (inset 100 px).
+            let src = appIcon.size
+            let crop = NSRect(x: src.width * 100 / 1024, y: src.height * 100 / 1024,
+                              width: src.width * 824 / 1024, height: src.height * 824 / 1024)
+            NSGraphicsContext.saveGraphicsState()
+            NSBezierPath(roundedRect: body, xRadius: 3.6, yRadius: 3.6).addClip()
+            appIcon.draw(in: body, from: crop, operation: .sourceOver, fraction: state == .idle ? 0.75 : 1)
+            NSGraphicsContext.restoreGraphicsState()
+            return true
+        }
+    }
+}
+
 /// Borderless floating panel shown under the menu bar icon.
 final class NerdPanel: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -672,6 +721,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        // `--snapshot-icon <file.png>` renders the menu bar icon states (idle, playing, scanning; bright and dim).
+        if let i = CommandLine.arguments.firstIndex(of: "--snapshot-icon"), CommandLine.arguments.indices.contains(i + 1) {
+            let frames: [(StatusIcon.State, Double)] = [(.idle, 0), (.playing, 0), (.playing, 0.6), (.playing, 1.2), (.scanning, 0), (.scanning, 1.2)]
+            let scale = 4, cell = Int(StatusIcon.size.width) * scale, gap = 8
+            let width = cell * frames.count + gap * (frames.count - 1)
+            if let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: cell, bitsPerSample: 8,
+                                          samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                          bytesPerRow: 0, bitsPerPixel: 0),
+               let ctx = NSGraphicsContext(bitmapImageRep: rep) {
+                NSGraphicsContext.saveGraphicsState()
+                NSGraphicsContext.current = ctx
+                NSColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1).setFill()
+                NSRect(x: 0, y: 0, width: width, height: cell).fill()
+                for (k, f) in frames.enumerated() {
+                    StatusIcon.image(state: f.0, phase: f.1)
+                        .draw(in: NSRect(x: k * (cell + gap), y: 0, width: cell, height: cell))
+                }
+                NSGraphicsContext.restoreGraphicsState()
+                try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
+            }
+            exit(0)
+        }
+
         // `--snapshot <file.png>` renders the panel to an image and quits (for checking the UI without clicking).
         if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), CommandLine.arguments.indices.contains(i + 1) {
             model.restoreLast()
@@ -692,10 +764,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let button = statusItem.button {
             // The app icon itself, scaled to menu bar size.
-            let icon = (NSImage(named: NSImage.applicationIconName)?.copy() as? NSImage) ?? NSImage()
-            icon.size = NSSize(width: 20, height: 20)
-            button.image = icon
-            button.imageScaling = .scaleProportionallyUpOrDown
+            button.image = StatusIcon.image(state: .idle, phase: 0)
+            button.imageScaling = .scaleNone
             button.toolTip = "Nerdwave"
             button.target = self
             button.action = #selector(togglePanel)
@@ -704,6 +774,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onWillPickFolder = { [weak self] in self?.closePanel() }
         model.showWelcome = { [weak self] in self?.showWelcome() }
         model.closePanel = { [weak self] in self?.closePanel() }
+        model.onRefresh = { [weak self] in self?.updateStatusIcon() }
         model.player.onChange = { [weak self] in self?.stateChanged() }
 
 
@@ -719,9 +790,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !UserDefaults.standard.bool(forKey: "didShowWelcome") { showWelcome() }
     }
 
+    private var iconTimer: Timer?
+    private var shownIconState: StatusIcon.State?
+
+    private var iconState: StatusIcon.State {
+        model.isScanning ? .scanning : (model.player.isPlaying ? .playing : .idle)
+    }
+
+    /// Animates the border while playing or scanning; stops the timer (and draws the plain icon) when idle.
+    private func updateStatusIcon() {
+        let state = iconState
+        if state == .idle {
+            iconTimer?.invalidate(); iconTimer = nil
+            if shownIconState != .idle { statusItem.button?.image = StatusIcon.image(state: .idle, phase: 0) }
+            shownIconState = .idle
+            return
+        }
+        shownIconState = state
+        guard iconTimer == nil else { return }
+        let t = Timer(timeInterval: 1.0 / 20, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            let s = self.iconState
+            if s == .idle { self.updateStatusIcon(); return }
+            self.statusItem.button?.image = StatusIcon.image(state: s, phase: Date.timeIntervalSinceReferenceDate)
+        }
+        RunLoop.main.add(t, forMode: .common)
+        iconTimer = t
+    }
+
     private func stateChanged() {
         model.refresh()
-        statusItem.button?.alphaValue = model.isPlaying ? 1 : 0.6
+        updateStatusIcon()
         resizePanel()
     }
 
