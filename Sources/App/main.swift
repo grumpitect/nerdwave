@@ -185,6 +185,7 @@ struct RowButton<Label: View>: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focusable(false)
         .onHover { hover = $0 }
     }
 }
@@ -209,6 +210,7 @@ struct KeyButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focusable(false)              // mouse-only, like a media player: no focus ring after a click
         .disabled(!enabled)
         .help(help)
         .onHover { hover = $0 }
