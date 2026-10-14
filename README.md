@@ -13,7 +13,7 @@ Made for the [Nerdative](https://www.youtube.com/@nerdative) channel on YouTube.
 on your stream means a lot.
 
 <p align="center">
-  <img src="docs/panel-1.6.2.png" width="340" alt="Nerdwave panel">
+  <img src="docs/panel-1.6.3.png" width="340" alt="Nerdwave panel">
   &nbsp;&nbsp;
   <img src="docs/welcome-1.5.3.png" width="440" alt="Nerdwave welcome screen">
 </p>
@@ -33,7 +33,7 @@ on your stream means a lot.
 - **Media keys.** Play/pause, next and previous work from the keyboard and Control Center, which also shows the
   track. macOS sends those keys to whichever app last started playing, so a video you start later takes them, and
   playing or skipping in Nerdwave takes them back.
-- **Remembers things.** Volume (default 55%), the last mood (ready to play, never auto-plays at login),
+- **Remembers things.** Volume (default 40%), the last mood (ready to play, never auto-plays at login),
   and your history survive restarts.
 - **Open at login** toggle (off by default), and a `feedback` link straight to GitHub issues.
 
