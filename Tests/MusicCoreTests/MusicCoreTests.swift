@@ -127,7 +127,7 @@ final class LibraryTests: XCTestCase {
         let suite = "test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
-        XCTAssertEqual(VolumeSetting(defaults: defaults).percent, 25)           // default
+        XCTAssertEqual(VolumeSetting(defaults: defaults).percent, 55)           // default
         VolumeSetting(defaults: defaults).percent = 42
         XCTAssertEqual(VolumeSetting(defaults: defaults).percent, 42)           // survives a "restart"
         VolumeSetting(defaults: defaults).percent = 250

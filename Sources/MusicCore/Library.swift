@@ -77,10 +77,11 @@ public func trackDisplayName(_ url: URL) -> String {
     return name
 }
 
-/// The app's volume slider (0 to 100%), saved across restarts. Defaults to 25%.
+/// The app's volume slider (0 to 100%), saved across restarts. Defaults to 55%: loud enough to hear as background
+/// music in the gaps of a stream (about -30 LUFS for a typical playlist); OBS ducking takes it down under speech.
 public final class VolumeSetting {
     public static let key = "volumePercent"
-    public static let defaultPercent = 25
+    public static let defaultPercent = 55
     private let defaults: UserDefaults
     public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
