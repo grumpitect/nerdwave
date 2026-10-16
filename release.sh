@@ -8,9 +8,9 @@
 #   ./release.sh 1.2.3      set an exact version
 #
 # Steps: checks the tree is clean and tests pass, bumps CFBundleShortVersionString in Info.plist, builds a
-# universal (Apple Silicon + Intel) Nerdwave.app signed ad hoc and zips it, points the Homebrew cask
-# (Casks/nerdwave.rb) at that zip, commits it all as "Release vX.Y.Z", tags and pushes, and creates the
-# GitHub release with the zip attached. Needs the GitHub CLI (`gh`) signed in.
+# universal (Apple Silicon + Intel) Nerdwave.app signed ad hoc and zips it, commits "Release vX.Y.Z", tags
+# and pushes, creates the GitHub release with the zip attached, and points the Homebrew cask in
+# github.com/grumpitect/homebrew-nerdwave at it. Needs the GitHub CLI (`gh`) signed in.
 set -euo pipefail
 cd "${0:A:h}"
 
@@ -47,8 +47,6 @@ ZIP="$DIST/Nerdwave-$version.zip"
 ditto -c -k --keepParent "$APP" "$ZIP"
 sha=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)
 
-# Homebrew cask (brew tap grumpitect/nerdwave https://github.com/grumpitect/nerdwave), in the same commit.
-sed -i '' -e "s/^  version \".*\"/  version \"$version\"/" -e "s/^  sha256 \".*\"/  sha256 \"$sha\"/" Casks/nerdwave.rb
 git commit -q -am "Release $tag"
 git tag -a "$tag" -m "Nerdwave $tag"
 git push -q origin HEAD "$tag"
@@ -60,7 +58,8 @@ notes=$(cat <<NOTES
 With Homebrew:
 
 \`\`\`bash
-brew tap grumpitect/nerdwave https://github.com/grumpitect/nerdwave
+brew tap grumpitect/nerdwave
+brew trust grumpitect/nerdwave
 brew install --cask nerdwave
 \`\`\`
 
@@ -83,3 +82,12 @@ NOTES
 )
 gh release create "$tag" "$ZIP" --title "Nerdwave $tag" --notes "$notes"
 echo "released $tag: $(gh release view "$tag" --json url --jq .url)"
+
+# Homebrew: point the cask in the tap (brew tap grumpitect/nerdwave) at this release.
+TAP="$(mktemp -d)/homebrew-nerdwave"
+GH_GIT=(-c credential.helper= -c 'credential.helper=!gh auth git-credential')   # gh's login, no Keychain prompt
+git "${GH_GIT[@]}" clone -q https://github.com/grumpitect/homebrew-nerdwave.git "$TAP"
+sed -i '' -e "s/^  version \".*\"/  version \"$version\"/" -e "s/^  sha256 \".*\"/  sha256 \"$sha\"/" "$TAP/Casks/nerdwave.rb"
+git -C "$TAP" -c user.name="$(git config user.name)" -c user.email="$(git config user.email)" \
+  commit -qam "nerdwave $version" && git -C "$TAP" "${GH_GIT[@]}" push -q
+echo "homebrew cask updated to $version"

@@ -43,11 +43,12 @@ on your stream means a lot.
 With [Homebrew](https://brew.sh):
 
 ```bash
-brew tap grumpitect/nerdwave https://github.com/grumpitect/nerdwave
+brew tap grumpitect/nerdwave
+brew trust grumpitect/nerdwave
 brew install --cask nerdwave
 ```
 
-`brew upgrade --cask nerdwave` updates it later.
+Homebrew asks you to trust third-party taps once (`brew trust`). `brew upgrade --cask nerdwave` updates it later.
 
 Or grab the latest **Nerdwave-x.y.z.zip** from [Releases](https://github.com/grumpitect/nerdwave/releases/latest),
 unzip it, move **Nerdwave.app** to Applications and open it.
