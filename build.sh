@@ -1,5 +1,6 @@
 #!/bin/zsh
-# Runs the tests, builds Nerdwave.app, and installs it to ~/Applications (quitting a running copy first).
+# Runs the tests, builds Nerdwave.app, and installs it (quitting a running copy first): over /Applications/Nerdwave.app
+# when one is there (for example from Homebrew), otherwise to ~/Applications.
 #
 # Usage:
 #   ./build.sh
@@ -30,8 +31,9 @@ else
   codesign --force --deep --sign - "$APP" 2>/dev/null
 fi
 
-mkdir -p ~/Applications
+DEST=~/Applications; [ -d /Applications/Nerdwave.app ] && DEST=/Applications
+mkdir -p "$DEST"
 pkill -x "Nerdwave" 2>/dev/null || true
-rm -rf ~/Applications/"Nerdwave.app"
-cp -R "$APP" ~/Applications/
-echo "installed: ~/Applications/Nerdwave.app"
+rm -rf "${DEST:?}/Nerdwave.app"
+cp -R "$APP" "$DEST/"
+echo "installed: $DEST/Nerdwave.app"
