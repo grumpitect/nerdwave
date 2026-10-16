@@ -660,7 +660,7 @@ struct WelcomeView: View {
                                           (" is free and stream-safe.", nil)], color: Theme.dimNS)
                 }
             }
-            step("04", "optional: its own OBS source", "Desktop audio already includes Nerdwave. For its own slider: Sources > + > macOS Audio Capture > Application: Nerdwave. If Nerdwave restarts while OBS is open, restart OBS.")
+            step("04", "optional: its own OBS source", "Desktop audio already includes Nerdwave. For its own slider: Sources > + > macOS Audio Capture > Application: Nerdwave. If you open Nerdwave after OBS, restart OBS (or use the reconnect script from the README).")
             DashedLine().stroke(Theme.dim.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [5, 4])).frame(height: 1)
             HStack(alignment: .top, spacing: 10) {
                 Text("<3").foregroundColor(Theme.sun).bold()

@@ -15,7 +15,7 @@ on your stream means a lot.
 <p align="center">
   <img src="docs/panel-1.6.3.png" width="340" alt="Nerdwave panel">
   &nbsp;&nbsp;
-  <img src="docs/welcome-1.5.3.png" width="440" alt="Nerdwave welcome screen">
+  <img src="docs/welcome-1.7.1.png" width="440" alt="Nerdwave welcome screen">
 </p>
 
 ## Features
@@ -117,8 +117,10 @@ wav, aiff, flac, caf.
 If your stream already captures your Mac's desktop audio, Nerdwave's music is included and there is nothing to
 set up. If you'd rather give the music its own source (its own slider, filters, or keeping other Mac sounds off
 stream), add **Sources > + > macOS Audio Capture** with Method **Application Audio Capture** and Application
-**Nerdwave**. OBS builds its list of apps when it starts, so if Nerdwave was quit and reopened while OBS was
-running, restart OBS (or open the source's properties) so it re-attaches.
+**Nerdwave**. OBS only looks up running apps when the source is created, so if you open Nerdwave after OBS, the
+source stays silent until you restart OBS. Quitting and reopening Nerdwave, or updating it, while OBS runs is fine.
+To fix the "opened after OBS" case automatically, add [obs/nerdwave-reconnect.lua](obs/nerdwave-reconnect.lua) in
+OBS (**Tools > Scripts > +**): it relinks the source a few seconds after Nerdwave starts.
 
 ## How playlists work
 
