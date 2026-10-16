@@ -61,6 +61,18 @@ public func loadPlaylists(in dir: URL) -> [Playlist] {
         }
 }
 
+/// Removes a playlist by moving its `.m3u` file out of `dir` (to the Trash by default, so it can be restored).
+/// The music files themselves are never touched. Returns false when there is no playlist with that name.
+@discardableResult
+public func removePlaylist(named name: String, in dir: URL,
+                           discard: (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }) throws -> Bool {
+    let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+    guard let file = files.first(where: { $0.pathExtension.lowercased() == "m3u" && $0.deletingPathExtension().lastPathComponent == name })
+    else { return false }
+    try discard(file)
+    return true
+}
+
 /// The slider follows VLC's cubic volume curve, so 25% sounds like VLC at 25%.
 /// 100% with weight 1.0 is full, unattenuated sound; a playlist's weight scales it down.
 public func amplitude(weight: Double, percent: Int) -> Float {

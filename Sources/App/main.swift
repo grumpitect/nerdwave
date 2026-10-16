@@ -96,6 +96,16 @@ final class AppModel: ObservableObject {
         onUserAction?()
     }
 
+    /// Removes a playlist: its file goes to the Trash, the music files stay. If it is the selected playlist,
+    /// playback stops and the saved last playlist and resume point are forgotten.
+    func removePlaylist(_ name: String) {
+        if player.current?.name == name { player.stop() }
+        if last.name == name { last.name = nil }
+        if resumeStore.point?.playlist == name { resumeStore.point = nil }
+        _ = try? MusicCore.removePlaylist(named: name, in: AppPaths.playlists)
+        refresh()
+    }
+
     /// Restores the last playlist at launch without playing it. If the last track is still there it is loaded
     /// at the saved position, so Play resumes it; picking a playlist from the menu starts fresh instead.
     func restoreLast() {
@@ -209,6 +219,69 @@ struct RowButton<Label: View>: View {
         .buttonStyle(.plain)
         .focusable(false)
         .onHover { hover = $0 }
+    }
+}
+
+/// A playlist row: click it to play the playlist. Hovering shows a × that turns the row into
+/// "rm <name>? [y] [n]"; [y] removes the playlist (the music files stay), [n] or moving away cancels.
+struct PlaylistRow: View {
+    let title: String
+    let symbol: String
+    let checked: Bool
+    let isPlaying: Bool
+    let onChoose: () -> Void
+    let onRemove: () -> Void
+    @State private var hover = false
+    @State private var confirming = false
+    var body: some View {
+        HStack(spacing: 8) {
+            if confirming {
+                Text(" ").bold()
+                Image(systemName: "trash").frame(width: 16).foregroundColor(Theme.magenta)
+                Text("rm \(title)?").foregroundColor(Theme.magenta)
+                Spacer()
+                ConfirmKey(label: "y", color: Theme.magenta) { confirming = false; onRemove() }
+                ConfirmKey(label: "n", color: Theme.dim) { confirming = false }
+            } else {
+                HStack(spacing: 8) {
+                    Text(checked ? ">" : " ").foregroundColor(Theme.magenta).bold()
+                    Image(systemName: symbol).frame(width: 16).foregroundColor(checked ? Theme.magenta : Theme.cyan)
+                    Text(title).foregroundColor(checked ? Theme.magenta : Theme.text)
+                    Spacer()
+                    if checked { Group { if isPlaying { PulsingDot() } else { Text("◌") } }.foregroundColor(Theme.magenta) }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onChoose)
+                Button(action: { confirming = true }) {
+                    Image(systemName: "xmark").font(.system(size: 10, weight: .bold))
+                        .frame(width: 16, height: 16).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .focusable(false)
+                .foregroundColor(Theme.dim)
+                .opacity(hover ? 1 : 0)          // keeps its space so the row doesn't shift
+                .allowsHitTesting(hover)
+                .help("Remove this playlist (the music files stay)")
+            }
+        }
+        .padding(.horizontal, 8).padding(.vertical, 3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 5).fill(hover ? Theme.magenta.opacity(0.18) : .clear))
+        .onHover { hover = $0; if !$0 { confirming = false } }
+    }
+}
+
+/// "[y]" / "[n]" in the remove confirmation: underlined on hover, like the panel's links.
+struct ConfirmKey: View {
+    let label: String
+    let color: Color
+    let action: () -> Void
+    @State private var hover = false
+    var body: some View {
+        Button(action: action) { Text("[\(label)]").foregroundColor(color).bold().underline(hover) }
+            .buttonStyle(.plain)
+            .focusable(false)
+            .onHover { hover = $0 }
     }
 }
 
@@ -379,17 +452,8 @@ struct NerdView: View {
                 }
             }
         case let .playlist(name, symbol, checked):
-            RowButton(action: { model.choose(name) }) {
-                HStack(spacing: 8) {
-                    Text(checked ? ">" : " ").foregroundColor(Theme.magenta).bold()
-                    Image(systemName: symbol).frame(width: 16).foregroundColor(checked ? Theme.magenta : Theme.cyan)
-                    Text(slug(name)).foregroundColor(checked ? Theme.magenta : Theme.text)
-                    Spacer()
-                    if checked {
-                        Group { if model.isPlaying { PulsingDot() } else { Text("◌") } }.foregroundColor(Theme.magenta)
-                    }
-                }
-            }
+            PlaylistRow(title: slug(name), symbol: symbol, checked: checked, isPlaying: model.isPlaying,
+                        onChoose: { model.choose(name) }, onRemove: { model.removePlaylist(name) })
         case let .openAtLogin(on):
             RowButton(action: { model.toggleLogin() }) {
                 HStack(spacing: 8) {

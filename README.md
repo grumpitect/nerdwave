@@ -22,7 +22,8 @@ on your stream means a lot.
 
 - **Menu bar only.** No Dock icon, no window in your way. Click the icon for a terminal-style panel.
 - **Moods from folders.** Each subfolder of your music folder becomes a playlist, with an icon picked from its
-  name ("Boss Fights" gets a flame, "Lofi Study" a coffee cup, "Jazz Nights" a jazz note...). Rescan any time.
+  name ("Boss Fights" gets a flame, "Lofi Study" a coffee cup, "Jazz Nights" a jazz note...). Rescan any time. To remove a playlist, hover it and click **×**, then **[y]**: its playlist file goes to the Trash
+  and your music files stay (a later scan of that folder brings it back).
 - **Balanced loudness.** Nerdwave measures every track (EBU R128 / ITU-R BS.1770, the broadcast standard)
   and gives each mood a weight so switching moods never jumps in volume.
 - **Endless, smooth playback.** Shuffle that reshuffles every pass (no repeats across the boundary), and a

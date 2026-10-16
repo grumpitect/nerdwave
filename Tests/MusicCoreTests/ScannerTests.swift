@@ -105,6 +105,20 @@ final class ScannerTests: XCTestCase {
         XCTAssertEqual(loaded["Hip-Hop"]!, 0.78, accuracy: 1e-9, "weights rewritten in the files")
     }
 
+    func testRemovePlaylistOnlyRemovesThatPlaylistFile() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("rm-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        for name in ["Chill", "Rock"] { try "#EXTM3U\n/music/\(name)/01 A.mp3\n".write(to: dir.appendingPathComponent("\(name).m3u"), atomically: true, encoding: .utf8) }
+        var discarded: [String] = []
+        let discard: (URL) throws -> Void = { discarded.append($0.lastPathComponent); try FileManager.default.removeItem(at: $0) }
+        XCTAssertFalse(try removePlaylist(named: "chill", in: dir, discard: discard), "names match exactly")
+        XCTAssertTrue(try removePlaylist(named: "Chill", in: dir, discard: discard))
+        XCTAssertEqual(discarded, ["Chill.m3u"])
+        XCTAssertEqual(loadPlaylists(in: dir).map(\.name), ["Rock"])
+        XCTAssertFalse(try removePlaylist(named: "Chill", in: dir, discard: discard), "already gone")
+    }
+
     func testMenuAlwaysOffersScanAndHighlightsItWhenEmpty() {
         let empty = menuEntries(for: MenuState(playlists: [], current: nil, isPlaying: false, nowPlaying: nil,
                                                volumePercent: 25, openAtLogin: false))
