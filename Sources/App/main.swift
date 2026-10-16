@@ -248,20 +248,25 @@ struct PlaylistRow: View {
                     Image(systemName: symbol).frame(width: 16).foregroundColor(checked ? Theme.magenta : Theme.cyan)
                     Text(title).foregroundColor(checked ? Theme.magenta : Theme.text)
                     Spacer()
-                    if checked { Group { if isPlaying { PulsingDot() } else { Text("◌") } }.foregroundColor(Theme.magenta) }
                 }
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onChoose)
-                Button(action: { confirming = true }) {
-                    Image(systemName: "xmark").font(.system(size: 10, weight: .bold))
-                        .frame(width: 16, height: 16).contentShape(Rectangle())
+                // One slot at the right edge: the playing indicator, or the remove button while hovering.
+                ZStack {
+                    if hover {
+                        Button(action: { confirming = true }) {
+                            Image(systemName: "xmark").font(.system(size: 10, weight: .bold))
+                                .frame(width: 16, height: 16).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .focusable(false)
+                        .foregroundColor(Theme.dim)
+                        .help("Remove this playlist (the music files stay)")
+                    } else if checked {
+                        Group { if isPlaying { PulsingDot() } else { Text("◌") } }.foregroundColor(Theme.magenta)
+                    }
                 }
-                .buttonStyle(.plain)
-                .focusable(false)
-                .foregroundColor(Theme.dim)
-                .opacity(hover ? 1 : 0)          // keeps its space so the row doesn't shift
-                .allowsHitTesting(hover)
-                .help("Remove this playlist (the music files stay)")
+                .frame(width: 16)
             }
         }
         .padding(.horizontal, 8).padding(.vertical, 3)
