@@ -1,27 +1,51 @@
 -- Nerdwave reconnect for OBS Studio (macOS).
 --
--- OBS's "macOS Audio Capture" in Application mode only looks up running apps when the source is created. If you
--- open Nerdwave after OBS, the source stays silent until you restart OBS. This script notices when Nerdwave starts
--- (or restarts) and relinks every source that captures Nerdwave, a few seconds later. No setup: it finds the
--- sources by the app they capture, whatever you named them.
+-- OBS's "macOS Audio Capture" in Application mode links to the app when the source starts. If you open Nerdwave
+-- after OBS, the source stays silent until you restart OBS. This script notices when Nerdwave starts and relinks
+-- every source that captures Nerdwave a few seconds later. No setup: it finds the sources by the app they
+-- capture, whatever you named them. (Quitting and reopening Nerdwave, or updating it, while OBS runs already
+-- works on its own; only "not running, then running" triggers a relink.)
+--
+-- OBS runs scripts on the thread that draws frames, so the script never waits on other programs: one small
+-- background checker (it stops by itself when OBS quits) writes Nerdwave's pid to a file every 2 s, and the
+-- script only reads that file.
 --
 -- Install: OBS > Tools > Scripts > + > choose this file.
 obs = obslua
 
 local BUNDLE = "com.nerdative.nerdwave"
-local PROCESS = "Nerdwave"
-local CHECK_MS = 3000
+local CHECK_MS = 2000
+local DIR = os.getenv("TMPDIR") or "/tmp/"
+local RESULTS = DIR .. "nerdwave-obs-pid.txt"
+local CHECKER_PID = DIR .. "nerdwave-obs-checker.pid"
 
-local last_pid = nil
-local step = 0          -- 2: refresh the app list on the next tick; 1: restart the capture on the next tick
+local running = nil     -- true/false once known
+local step = 0          -- 2: refresh the app list on the next check; 1: restart the capture on the next check
 
-local function current_pid()
-    local p = io.popen("/usr/bin/pgrep -xn " .. PROCESS)
-    if p == nil then return nil end
-    local pid = p:read("*l")
-    p:close()
-    if pid == nil or pid == "" then return nil end
-    return pid
+local function stop_checker()
+    local f = io.open(CHECKER_PID, "r")
+    if f == nil then return end
+    local pid = f:read("*l")
+    f:close()
+    if pid ~= nil and pid:match("^%d+$") then os.execute("kill " .. pid .. " >/dev/null 2>&1") end
+    os.remove(CHECKER_PID)
+end
+
+local function start_checker()
+    stop_checker()
+    os.remove(RESULTS)
+    -- $PPID is OBS (the shell OBS starts for os.execute); the loop ends when OBS is gone.
+    local loop = "while kill -0 $PPID 2>/dev/null; do /usr/bin/pgrep -xn Nerdwave > '" .. RESULTS .. ".new'; mv -f '"
+        .. RESULTS .. ".new' '" .. RESULTS .. "'; sleep 2; done"
+    os.execute("( " .. loop .. " ) >/dev/null 2>&1 & echo $! > '" .. CHECKER_PID .. "'")
+end
+
+local function nerdwave_running()
+    local f = io.open(RESULTS, "r")
+    if f == nil then return nil end
+    local pid = f:read("*l")
+    f:close()
+    return pid ~= nil and pid ~= ""
 end
 
 local function nerdwave_sources()
@@ -55,7 +79,7 @@ local function refresh_app_list(name)
     obs.obs_source_release(source)
 end
 
--- Restart the capture with the rebuilt list so it finds the new Nerdwave process.
+-- Restart the capture with the rebuilt list so it finds Nerdwave (restarting without the refresh disconnects it).
 local function restart_capture(name)
     local source = obs.obs_get_source_by_name(name)
     if source == nil then return end
@@ -63,27 +87,30 @@ local function restart_capture(name)
     obs.obs_source_update(source, settings)
     obs.obs_data_release(settings)
     obs.obs_source_release(source)
-    obs.script_log(obs.LOG_INFO, "reconnected " .. name .. " to Nerdwave")
+    obs.script_log(obs.LOG_INFO, "relinked " .. name .. " to Nerdwave")
 end
 
 local function check()
     if step == 1 then for _, name in ipairs(nerdwave_sources()) do restart_capture(name) end end
     if step == 2 then for _, name in ipairs(nerdwave_sources()) do refresh_app_list(name) end end
     if step > 0 then step = step - 1 end
-    local pid = current_pid()
-    if pid ~= nil and pid ~= last_pid then step = 2 end   -- give the app a moment to open its window
-    last_pid = pid
+    local now = nerdwave_running()
+    if now ~= nil then
+        if now and running == false then step = 2 end
+        running = now
+    end
 end
 
 function script_description()
-    return "Relinks OBS audio capture sources for Nerdwave when Nerdwave starts after OBS (or restarts)."
+    return "Relinks OBS audio capture sources for Nerdwave when Nerdwave starts after OBS."
 end
 
 function script_load(settings)
-    last_pid = current_pid()
+    start_checker()
     obs.timer_add(check, CHECK_MS)
 end
 
 function script_unload()
     obs.timer_remove(check)
+    stop_checker()
 end
