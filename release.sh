@@ -9,7 +9,8 @@
 #
 # Steps: checks the tree is clean and tests pass, bumps CFBundleShortVersionString in Info.plist, commits
 # and tags vX.Y.Z, pushes, builds a universal (Apple Silicon + Intel) Nerdwave.app signed ad hoc, zips it,
-# and creates the GitHub release with the zip attached. Needs the GitHub CLI (`gh`) signed in.
+# and creates the GitHub release with the zip attached, then points the Homebrew cask in
+# github.com/grumpitect/homebrew-tap at it. Needs the GitHub CLI (`gh`) signed in.
 set -euo pipefail
 cd "${0:A:h}"
 
@@ -71,3 +72,11 @@ NOTES
 )
 gh release create "$tag" "$ZIP" --title "Nerdwave $tag" --notes "$notes"
 echo "released $tag: $(gh release view "$tag" --json url --jq .url)"
+
+# Homebrew: update the cask (brew install --cask grumpitect/tap/nerdwave) to this release.
+TAP="$(mktemp -d)/homebrew-tap"
+git clone -q https://github.com/grumpitect/homebrew-tap.git "$TAP"
+sed -i '' -e "s/^  version \".*\"/  version \"$version\"/" -e "s/^  sha256 \".*\"/  sha256 \"$sha\"/" "$TAP/Casks/nerdwave.rb"
+git -C "$TAP" -c user.name="$(git config user.name)" -c user.email="$(git config user.email)" \
+  commit -qam "nerdwave $version" && git -C "$TAP" push -q
+echo "homebrew cask updated to $version"

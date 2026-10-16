@@ -40,10 +40,16 @@ on your stream means a lot.
 
 ## Download
 
-Grab the latest **Nerdwave-x.y.z.zip** from [Releases](https://github.com/grumpitect/nerdwave/releases/latest),
+With [Homebrew](https://brew.sh):
+
+```bash
+brew install --cask grumpitect/tap/nerdwave
+```
+
+Or grab the latest **Nerdwave-x.y.z.zip** from [Releases](https://github.com/grumpitect/nerdwave/releases/latest),
 unzip it, move **Nerdwave.app** to Applications and open it.
 
-Nerdwave is free and not notarized by Apple, so the first time macOS says it can't verify the developer. Open
+Either way, Nerdwave is free and not notarized by Apple, so the first time macOS says it can't verify the developer. Open
 **System Settings > Privacy & Security**, scroll down and click **Open Anyway**. You only need to do this once.
 
 ## Requirements
