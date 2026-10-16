@@ -55,6 +55,12 @@ changes=$( [ -n "$previous" ] && git log --format='- %s' "$previous..$tag" | gre
 notes=$(cat <<NOTES
 ## Install
 
+One command (no "Open Anyway" step needed):
+
+\`\`\`bash
+curl -fsSL https://raw.githubusercontent.com/grumpitect/nerdwave/main/install.sh | bash
+\`\`\`
+
 With Homebrew:
 
 \`\`\`bash
@@ -68,7 +74,7 @@ Or by hand:
 1. Download **Nerdwave-$version.zip** below and unzip it.
 2. Move **Nerdwave.app** to your Applications folder and open it.
 
-Either way, macOS will say it can't verify the developer (Nerdwave is free and not notarized by Apple).
+With Homebrew or by hand, macOS will say it can't verify the developer (Nerdwave is free and not notarized by Apple).
 Open **System Settings > Privacy & Security**, scroll down and click **Open Anyway**. You only do this once.
 
 Requires macOS 14 or later. Universal app (Apple Silicon and Intel; Intel is untested).

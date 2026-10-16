@@ -40,7 +40,17 @@ on your stream means a lot.
 
 ## Download
 
-With [Homebrew](https://brew.sh):
+**One command** (installs or updates to the latest release):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/grumpitect/nerdwave/main/install.sh | bash
+```
+
+[install.sh](install.sh) downloads the latest release, checks its SHA-256 against the one in the release notes, and
+puts Nerdwave.app in /Applications (or where it already is). It only uses tools that come with macOS; read it first
+if you like. Files downloaded this way aren't flagged by macOS, so there is no "Open Anyway" step.
+
+**With [Homebrew](https://brew.sh):**
 
 ```bash
 brew tap grumpitect/nerdwave
@@ -50,11 +60,12 @@ brew install --cask nerdwave
 
 Homebrew asks you to trust third-party taps once (`brew trust`). `brew upgrade --cask nerdwave` updates it later.
 
-Or grab the latest **Nerdwave-x.y.z.zip** from [Releases](https://github.com/grumpitect/nerdwave/releases/latest),
+**By hand:** grab the latest **Nerdwave-x.y.z.zip** from [Releases](https://github.com/grumpitect/nerdwave/releases/latest),
 unzip it, move **Nerdwave.app** to Applications and open it.
 
-Either way, Nerdwave is free and not notarized by Apple, so the first time macOS says it can't verify the developer. Open
-**System Settings > Privacy & Security**, scroll down and click **Open Anyway**. You only need to do this once.
+With Homebrew or the zip, macOS says it can't verify the developer the first time (Nerdwave is free and not notarized
+by Apple). Open **System Settings > Privacy & Security**, scroll down and click **Open Anyway**. You only need to do
+this once.
 
 ## Requirements
 
